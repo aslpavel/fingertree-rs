@@ -295,6 +295,81 @@ impl<V: Measured> FingerTreeRec<V> {
         }
     }
 
+    fn concat(left: &Self, mid: &[Node<V>], right: &Self) -> Self {
+        use FingerTreeInner::{Deep, Empty, Single};
+        match (left.inner.deref(), right.inner.deref()) {
+            (Empty, _) => mid.iter()
+                .rfold(right.clone(), |ft, item| ft.push_left(item.clone())),
+            (_, Empty) => mid.iter()
+                .fold(left.clone(), |ft, item| ft.push_right(item.clone())),
+            (Single(l), _) => mid.iter()
+                .rfold(right.clone(), |ft, item| ft.push_left(item.clone()))
+                .push_left(l.clone()),
+            (_, Single(r)) => mid.iter()
+                .rfold(right.clone(), |ft, item| ft.push_left(item.clone()))
+                .push_right(r.clone()),
+            (
+                Deep {
+                    left: left0,
+                    spine: spine0,
+                    right: right0,
+                    ..
+                },
+                Deep {
+                    left: left1,
+                    spine: spine1,
+                    right: right1,
+                    ..
+                },
+            ) => {
+                // lift values to nodes
+                let mut vals: Vec<_> = right0
+                    .as_ref()
+                    .iter()
+                    .chain(mid.iter())
+                    .chain(left1.as_ref().iter())
+                    .collect();
+                let mut current = vals.as_slice();
+                let mut nodes = Vec::new();
+                while !current.is_empty() {
+                    let consumed = match current {
+                        [v0, v1] => {
+                            nodes.push(Node::node2((*v0).clone(), (*v1).clone()));
+                            2
+                        }
+                        [v0, v1, v2] => {
+                            nodes.push(Node::node3((*v0).clone(), (*v1).clone(), (*v2).clone()));
+                            3
+                        }
+                        [v0, v1, v2, v3] => {
+                            nodes.push(Node::node2((*v0).clone(), (*v1).clone()));
+                            nodes.push(Node::node2((*v2).clone(), (*v3).clone()));
+                            4
+                        }
+                        _ => {
+                            if let ([v0, v1, v2], _) = current.split_at(3) {
+                                nodes.push(Node::node3(
+                                    (*v0).clone(),
+                                    (*v1).clone(),
+                                    (*v2).clone(),
+                                ));
+                                3
+                            } else {
+                                unreachable!()
+                            }
+                        }
+                    };
+                    current = current.split_at(consumed).1;
+                }
+                Self::deep(
+                    left0.clone(),
+                    Self::concat(spine0, &nodes, spine1),
+                    right1.clone(),
+                )
+            }
+        }
+    }
+
     // left element is not `Digit` because `Digit` cannot be empty, but left in current
     // postion can be.
     fn deep_left(left: &[Node<V>], spine: FingerTreeRec<V>, right: Digit<Node<V>>) -> Self {
@@ -382,6 +457,16 @@ impl<V: Measured> FingerTree<V> {
     }
 }
 
+impl<'a, V: Measured> Add for &'a FingerTree<V> {
+    type Output = FingerTree<V>;
+
+    fn add(self, other: &FingerTree<V>) -> Self::Output {
+        FingerTree {
+            rec: FingerTreeRec::concat(&self.rec, &[], &other.rec),
+        }
+    }
+}
+
 pub struct FingerTreeIter<V: Measured> {
     tail: FingerTree<V>,
 }
@@ -447,6 +532,6 @@ impl<T> Measured for Sized<T> {
 }
 
 fn main() {
-    let ft: FingerTree<_> = (1..100).map(Sized).collect();
-    println!("{:?}", ft);
+    let ft: FingerTree<_> = (1..32).map(Sized).collect();
+    println!("{:?}", &ft + &ft);
 }
