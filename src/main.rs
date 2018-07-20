@@ -11,11 +11,12 @@ use std::rc::Rc;
 //  - use sized array for `Node{2,3}`
 //  - implement `Digit` as named sized array
 //  - add split/concat
+//  - use more references in function signatures and call clone in the body of functions
 
 /// `Measured::Measure` must form `Monoid`
 pub trait Measured {
     type Measure: Add<Output = Self::Measure> + Clone;
-    fn zero() -> Self::Measure;
+    fn measure_zero() -> Self::Measure;
     fn measure(&self) -> Self::Measure;
 }
 
@@ -43,8 +44,8 @@ where
     V: Measured,
 {
     type Measure = V::Measure;
-    fn zero() -> Self::Measure {
-        V::zero()
+    fn measure_zero() -> Self::Measure {
+        V::measure_zero()
     }
     fn measure(&self) -> Self::Measure {
         match self.deref() {
@@ -107,13 +108,13 @@ struct Digit<V>(Vec<V>);
 
 impl<V: Measured> Measured for Digit<V> {
     type Measure = V::Measure;
-    fn zero() -> Self::Measure {
-        V::zero()
+    fn measure_zero() -> Self::Measure {
+        V::measure_zero()
     }
     fn measure(&self) -> Self::Measure {
         self.as_ref()
             .iter()
-            .fold(Self::zero(), |measure, val| measure + val.measure())
+            .fold(Self::measure_zero(), |measure, val| measure + val.measure())
     }
 }
 
@@ -199,13 +200,13 @@ enum FingerTreeInner<V: Measured> {
 
 impl<V: Measured> Measured for FingerTreeInner<V> {
     type Measure = V::Measure;
-    fn zero() -> Self::Measure {
-        V::zero()
+    fn measure_zero() -> Self::Measure {
+        V::measure_zero()
     }
     fn measure(&self) -> Self::Measure {
         use FingerTreeInner::{Deep, Empty, Single};
         match self {
-            Empty => Self::zero(),
+            Empty => Self::measure_zero(),
             Single(node) => node.measure(),
             Deep { measure, .. } => measure.clone(),
         }
@@ -333,26 +334,22 @@ impl<V: Measured> FingerTreeRec<V> {
                 let mut nodes = Vec::new();
                 while !current.is_empty() {
                     let consumed = match current {
-                        [v0, v1] => {
-                            nodes.push(Node::node2((*v0).clone(), (*v1).clone()));
+                        &[v0, v1] => {
+                            nodes.push(Node::node2(v0.clone(), v1.clone()));
                             2
                         }
-                        [v0, v1, v2] => {
-                            nodes.push(Node::node3((*v0).clone(), (*v1).clone(), (*v2).clone()));
+                        &[v0, v1, v2] => {
+                            nodes.push(Node::node3(v0.clone(), v1.clone(), v2.clone()));
                             3
                         }
-                        [v0, v1, v2, v3] => {
-                            nodes.push(Node::node2((*v0).clone(), (*v1).clone()));
-                            nodes.push(Node::node2((*v2).clone(), (*v3).clone()));
+                        &[v0, v1, v2, v3] => {
+                            nodes.push(Node::node2(v0.clone(), v1.clone()));
+                            nodes.push(Node::node2(v2.clone(), v3.clone()));
                             4
                         }
                         _ => {
-                            if let ([v0, v1, v2], _) = current.split_at(3) {
-                                nodes.push(Node::node3(
-                                    (*v0).clone(),
-                                    (*v1).clone(),
-                                    (*v2).clone(),
-                                ));
+                            if let (&[v0, v1, v2], _) = current.split_at(3) {
+                                nodes.push(Node::node3(v0.clone(), v1.clone(), v2.clone()));
                                 3
                             } else {
                                 unreachable!()
@@ -403,6 +400,37 @@ impl<V: Measured> FingerTreeRec<V> {
             },
         }
     }
+
+    fn deep_right(left: Digit<Node<V>>, spine: FingerTreeRec<V>, right: &[Node<V>]) -> Self {
+        if right.is_empty() {
+            match spine.view_right() {
+                Some((head, tail)) => Self::deep(left, tail, (&head).into()),
+                None => left.as_ref()
+                    .iter()
+                    .cloned()
+                    .fold(FingerTreeRec::empty(), |ft, node| ft.push_right(node)),
+            }
+        } else {
+            Self::deep(left, spine, right.into())
+        }
+    }
+
+    fn view_right(&self) -> Option<(Node<V>, Self)> {
+        use FingerTreeInner::{Deep, Empty, Single};
+        match self.inner.deref() {
+            Empty => None,
+            Single(value) => Some((value.clone(), FingerTreeRec::empty())),
+            Deep {
+                left, spine, right, ..
+            } => match right.as_ref().split_last() {
+                None => panic!("digit cannot be empty"),
+                Some((head, tail)) => Some((
+                    head.clone(),
+                    Self::deep_right(left.clone(), spine.clone(), tail),
+                )),
+            },
+        }
+    }
 }
 
 pub struct FingerTree<V: Measured> {
@@ -444,16 +472,26 @@ impl<V: Measured> FingerTree<V> {
         }
     }
 
-    // pub fn view_right(&self) -> Option<(Rc<V>, Self)> {
-    //     let (head, tail) = self.rec.view_right()?;
-    //     match head.deref() {
-    //         NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
-    //         _ => panic!("not leaf returned from to level finger-tree"),
-    //     }
-    // }
+    pub fn view_right(&self) -> Option<(Rc<V>, Self)> {
+        let (head, tail) = self.rec.view_right()?;
+        match head.deref() {
+            NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
+            _ => panic!("not leaf returned from to level finger-tree"),
+        }
+    }
 
-    pub fn iter(&self) -> impl Iterator<Item = Rc<V>> {
+    pub fn iter(&self) -> FingerTreeIter<V> {
         FingerTreeIter { tail: self.clone() }
+    }
+}
+
+impl<V: Measured> Measured for FingerTree<V> {
+    type Measure = V::Measure;
+    fn measure_zero() -> Self::Measure {
+        V::measure_zero()
+    }
+    fn measure(&self) -> Self::Measure {
+        self.rec.inner.measure()
     }
 }
 
@@ -475,13 +513,17 @@ impl<V: Measured> Iterator for FingerTreeIter<V> {
     type Item = Rc<V>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.tail.view_left() {
-            Some((head, tail)) => {
-                self.tail = tail;
-                Some(head)
-            }
-            None => None,
-        }
+        let (head, tail) = self.tail.view_left()?;
+        self.tail = tail;
+        Some(head)
+    }
+}
+
+impl<V: Measured> DoubleEndedIterator for FingerTreeIter<V> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let (head, tail) = self.tail.view_right()?;
+        self.tail = tail;
+        Some(head)
     }
 }
 
@@ -523,7 +565,7 @@ struct Sized<T>(T);
 
 impl<T> Measured for Sized<T> {
     type Measure = usize;
-    fn zero() -> Self::Measure {
+    fn measure_zero() -> Self::Measure {
         0
     }
     fn measure(&self) -> Self::Measure {
@@ -532,6 +574,8 @@ impl<T> Measured for Sized<T> {
 }
 
 fn main() {
-    let ft: FingerTree<_> = (1..32).map(Sized).collect();
-    println!("{:?}", &ft + &ft);
+    let ft: FingerTree<_> = (0..32).map(Sized).collect();
+    let vec: Vec<_> = ft.iter().rev().collect();
+    println!("{:?} {:?}", ft.measure(), &ft + &ft);
+    println!("{:?}", vec);
 }
