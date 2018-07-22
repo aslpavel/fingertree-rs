@@ -10,7 +10,6 @@ use std::rc::Rc;
 //  - lazy spine?
 //  - use sized array for `Node{2,3}`
 //  - implement `Digit` as named sized array
-//  - add split/concat
 //  - use more references in function signatures and call clone in the body of functions
 
 /// `Measured::Measure` must form `Monoid`
@@ -140,6 +139,29 @@ impl<V> Digit<V> {
     }
 }
 
+impl<V: Measured> Digit<V> {
+    fn split<F>(&self, measure: &V::Measure, mut pred: F) -> (&[V], &V, &[V])
+    where
+        F: FnMut(&V::Measure) -> bool,
+    {
+        assert!(!self.0.is_empty(), "digit cannot be empty");
+        if self.0.len() == 1 {
+            (&[], &self.0[0], &[])
+        } else {
+            let slice = self.as_ref();
+            let mut measure = measure.clone();
+            for (index, item) in slice.iter().enumerate() {
+                measure = measure + item.measure();
+                if pred(&measure) {
+                    return (&self.0[..index], &self.0[index], &self.0[index + 1..]);
+                }
+            }
+            let index = self.0.len() - 1;
+            (&self.0[..index], &self.0[index], &[])
+        }
+    }
+}
+
 impl<V> AsRef<[V]> for Digit<V> {
     fn as_ref(&self) -> &[V] {
         self.0.as_ref()
@@ -215,6 +237,16 @@ impl<V: Measured> Measured for FingerTreeInner<V> {
 
 struct FingerTreeRec<V: Measured> {
     inner: Rc<FingerTreeInner<V>>,
+}
+
+impl<V: Measured> Measured for FingerTreeRec<V> {
+    type Measure = V::Measure;
+    fn measure_zero() -> Self::Measure {
+        V::measure_zero()
+    }
+    fn measure(&self) -> Self::Measure {
+        self.inner.measure()
+    }
 }
 
 impl<V: Measured> Clone for FingerTreeRec<V> {
@@ -431,6 +463,62 @@ impl<V: Measured> FingerTreeRec<V> {
             },
         }
     }
+
+    fn split<F>(
+        &self,
+        measure: &V::Measure,
+        mut pred: F,
+    ) -> (FingerTreeRec<V>, Node<V>, FingerTreeRec<V>)
+    where
+        F: FnMut(&V::Measure) -> bool,
+    {
+        use FingerTreeInner::{Deep, Empty, Single};
+        match self.inner.deref() {
+            Empty => panic!("recursive split of finger-tree called on empty tree"),
+            Single(value) => (
+                FingerTreeRec::empty(),
+                value.clone(),
+                FingerTreeRec::empty(),
+            ),
+            Deep {
+                left, spine, right, ..
+            } => {
+                // left
+                let left_measure = left.measure();
+                if pred(&left_measure) {
+                    let (l, x, r) = left.split(measure, pred);
+                    return (
+                        l.as_ref()
+                            .iter()
+                            .fold(FingerTreeRec::empty(), |ft, v| ft.push_right(v.clone())),
+                        x.clone(),
+                        Self::deep_left(r, spine.clone(), right.clone()),
+                    );
+                }
+                // spine
+                let spine_measure = left_measure.clone() + spine.measure();
+                if pred(&spine_measure) {
+                    let (sl, sx, sr) = spine.split(&left_measure, &mut pred);
+                    let sx = Digit::from(&sx);
+                    let (l, x, r) = sx.split(&(left_measure + sl.measure()), pred);
+                    return (
+                        Self::deep_right(left.clone(), sl, l),
+                        x.clone(),
+                        Self::deep_left(r, sr, right.clone()),
+                    );
+                }
+                // right
+                let (l, x, r) = right.split(&spine_measure, pred);
+                (
+                    Self::deep_right(left.clone(), spine.clone(), l),
+                    x.clone(),
+                    r.as_ref()
+                        .iter()
+                        .fold(FingerTreeRec::empty(), |ft, v| ft.push_right(v.clone())),
+                )
+            }
+        }
+    }
 }
 
 pub struct FingerTree<V: Measured> {
@@ -449,6 +537,13 @@ impl<V: Measured> FingerTree<V> {
     pub fn new() -> Self {
         FingerTree {
             rec: FingerTreeRec::empty(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        match *self.rec.inner {
+            FingerTreeInner::Empty => true,
+            _ => false,
         }
     }
 
@@ -480,6 +575,25 @@ impl<V: Measured> FingerTree<V> {
         }
     }
 
+    pub fn split<F>(&self, mut pred: F) -> (FingerTree<V>, FingerTree<V>)
+    where
+        F: FnMut(&V::Measure) -> bool,
+    {
+        if self.is_empty() {
+            (Self::new(), Self::new())
+        } else if pred(&self.measure()) {
+            let (l, x, r) = self.rec.split(&V::measure_zero(), pred);
+            (
+                FingerTree { rec: l },
+                FingerTree {
+                    rec: r.push_left(x),
+                },
+            )
+        } else {
+            (self.clone(), Self::new())
+        }
+    }
+
     pub fn iter(&self) -> FingerTreeIter<V> {
         FingerTreeIter { tail: self.clone() }
     }
@@ -491,7 +605,7 @@ impl<V: Measured> Measured for FingerTree<V> {
         V::measure_zero()
     }
     fn measure(&self) -> Self::Measure {
-        self.rec.inner.measure()
+        self.rec.measure()
     }
 }
 
