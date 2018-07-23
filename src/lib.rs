@@ -7,11 +7,11 @@ use std::rc::Rc;
 //    to make it types check. Structure itself compiles but any implementaoin fails.
 //
 // TODO:
+//  - improve lifting values to nodes in `.concat`
 //  - docs
 //  - tests, and maybe quickcheck tests?
 //  - benchmarks
 //  - Arc implementation?
-//  - implement `Digit` as named sized array
 //  - use more references in function signatures and call clone in the body of functions
 //  - lazy spine?
 
@@ -104,9 +104,13 @@ impl<V: Measured> Clone for Node<V> {
     }
 }
 
-// TODO: implement Digit::{One, Two, Three, Four}
-#[derive(Clone, Debug)]
-struct Digit<V>(Vec<V>);
+#[derive(Clone)]
+enum Digit<V> {
+    One([V; 1]),
+    Two([V; 2]),
+    Three([V; 3]),
+    Four([V; 4]),
+}
 
 impl<V: Measured> Measured for Digit<V> {
     type Measure = V::Measure;
@@ -120,46 +124,37 @@ impl<V: Measured> Measured for Digit<V> {
     }
 }
 
-impl<V> Digit<V> {
-    fn slice(&self) -> &[V] {
-        self.0.as_slice()
-    }
-
-    fn one(v0: V) -> Self {
-        Digit(vec![v0])
-    }
-
-    fn two(v0: V, v1: V) -> Self {
-        Digit(vec![v0, v1])
-    }
-}
-
 impl<V: Measured> Digit<V> {
     fn split<F>(&self, measure: &V::Measure, mut pred: F) -> (&[V], &V, &[V])
     where
         F: FnMut(&V::Measure) -> bool,
     {
-        assert!(!self.0.is_empty(), "digit cannot be empty");
-        if self.0.len() == 1 {
-            (&[], &self.0[0], &[])
+        let slice = self.as_ref();
+        if slice.len() == 1 {
+            (&[], &slice[0], &[])
         } else {
             let slice = self.as_ref();
             let mut measure = measure.clone();
             for (index, item) in slice.iter().enumerate() {
                 measure = measure + item.measure();
                 if pred(&measure) {
-                    return (&self.0[..index], &self.0[index], &self.0[index + 1..]);
+                    return (&slice[..index], &slice[index], &slice[index + 1..]);
                 }
             }
-            let index = self.0.len() - 1;
-            (&self.0[..index], &self.0[index], &[])
+            let index = slice.len() - 1;
+            (&slice[..index], &slice[index], &[])
         }
     }
 }
 
 impl<V> AsRef<[V]> for Digit<V> {
     fn as_ref(&self) -> &[V] {
-        self.0.as_ref()
+        match self {
+            Digit::One(v) => v,
+            Digit::Two(v) => v,
+            Digit::Three(v) => v,
+            Digit::Four(v) => v,
+        }
     }
 }
 
@@ -171,10 +166,19 @@ where
     type Output = Digit<V>;
 
     fn add(self, other: R) -> Self::Output {
-        let mut digit = Vec::with_capacity(4);
-        digit.extend_from_slice(&self.0);
-        digit.extend_from_slice(other.as_ref());
-        Digit(digit)
+        match (self.as_ref(), other.as_ref()) {
+            (_, []) => self.clone(),
+            ([v0], [v1]) => Digit::Two([v0.clone(), v1.clone()]),
+            ([v0], [v1, v2]) => Digit::Three([v0.clone(), v1.clone(), v2.clone()]),
+            ([v0], [v1, v2, v3]) => Digit::Four([v0.clone(), v1.clone(), v2.clone(), v3.clone()]),
+            ([v0, v1], [v2]) => Digit::Three([v0.clone(), v1.clone(), v2.clone()]),
+            ([v0, v1], [v2, v3]) => Digit::Four([v0.clone(), v1.clone(), v2.clone(), v3.clone()]),
+            ([v0, v1, v2], [v3]) => Digit::Four([v0.clone(), v1.clone(), v2.clone(), v3.clone()]),
+            _ => panic!(
+                "impossible to create digit of size: {}",
+                self.as_ref().len() + other.as_ref().len(),
+            ),
+        }
     }
 }
 
@@ -183,23 +187,27 @@ where
     V: Clone,
 {
     fn from(slice: &'a [V]) -> Digit<V> {
-        let mut digit = Vec::with_capacity(slice.len());
-        digit.extend_from_slice(slice);
-        Digit(digit)
+        match slice {
+            [v0] => Digit::One([v0.clone()]),
+            [v0, v1] => Digit::Two([v0.clone(), v1.clone()]),
+            [v0, v1, v2] => Digit::Three([v0.clone(), v1.clone(), v2.clone()]),
+            [v0, v1, v2, v3] => Digit::Four([v0.clone(), v1.clone(), v2.clone(), v3.clone()]),
+            _ => panic!("immposible to create digit from of size: {}", slice.len()),
+        }
     }
 }
 
 impl<'a, V: Measured> From<&'a Node<V>> for Digit<Node<V>> {
     fn from(node: &'a Node<V>) -> Digit<Node<V>> {
         match &node.deref() {
-            NodeInner::Leaf(..) => Digit(vec![node.clone()]),
-            NodeInner::Node2 { left, right, .. } => Digit(vec![left.clone(), right.clone()]),
+            NodeInner::Leaf(..) => Digit::One([node.clone()]),
+            NodeInner::Node2 { left, right, .. } => Digit::Two([left.clone(), right.clone()]),
             NodeInner::Node3 {
                 left,
                 middle,
                 right,
                 ..
-            } => Digit(vec![left.clone(), middle.clone(), right.clone()]),
+            } => Digit::Three([left.clone(), middle.clone(), right.clone()]),
         }
     }
 }
@@ -281,20 +289,22 @@ impl<V: Measured> FingerTreeRec<V> {
         use FingerTreeInner::{Deep, Empty, Single};
         match self.inner.deref() {
             Empty => Self::single(value),
-            Single(other) => {
-                Self::deep(Digit::one(value), Self::empty(), Digit::one(other.clone()))
-            }
+            Single(other) => Self::deep(
+                Digit::One([value]),
+                Self::empty(),
+                Digit::One([other.clone()]),
+            ),
             Deep {
                 left, spine, right, ..
             } => {
-                if let [l0, l1, l2, l3] = left.slice() {
+                if let [l0, l1, l2, l3] = left.as_ref() {
                     Self::deep(
-                        Digit::two(value, l0.clone()),
+                        Digit::Two([value, l0.clone()]),
                         spine.push_left(Node::node3(l1.clone(), l2.clone(), l3.clone())),
                         right.clone(),
                     )
                 } else {
-                    Self::deep(&Digit::one(value) + left, spine.clone(), right.clone())
+                    Self::deep(&Digit::One([value]) + left, spine.clone(), right.clone())
                 }
             }
         }
@@ -304,20 +314,22 @@ impl<V: Measured> FingerTreeRec<V> {
         use FingerTreeInner::{Deep, Empty, Single};
         match self.inner.deref() {
             Empty => Self::single(value),
-            Single(other) => {
-                Self::deep(Digit::one(other.clone()), Self::empty(), Digit::one(value))
-            }
+            Single(other) => Self::deep(
+                Digit::One([other.clone()]),
+                Self::empty(),
+                Digit::One([value]),
+            ),
             Deep {
                 left, spine, right, ..
             } => {
-                if let [r0, r1, r2, r3] = right.slice() {
+                if let [r0, r1, r2, r3] = right.as_ref() {
                     Self::deep(
                         left.clone(),
                         spine.push_right(Node::node3(r0.clone(), r1.clone(), r2.clone())),
-                        Digit::two(r3.clone(), value),
+                        Digit::Two([r3.clone(), value]),
                     )
                 } else {
-                    Self::deep(left.clone(), spine.clone(), right + Digit::one(value))
+                    Self::deep(left.clone(), spine.clone(), right + Digit::One([value]))
                 }
             }
         }
