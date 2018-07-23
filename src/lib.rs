@@ -372,16 +372,16 @@ impl<V: Measured> FingerTreeRec<V> {
                 let mut current = vals.as_slice();
                 let mut nodes = Vec::new();
                 while !current.is_empty() {
-                    let consumed = match current {
-                        &[v0, v1] => {
+                    let consumed = match *current {
+                        [v0, v1] => {
                             nodes.push(Node::node2(v0.clone(), v1.clone()));
                             2
                         }
-                        &[v0, v1, v2] => {
+                        [v0, v1, v2] => {
                             nodes.push(Node::node3(v0.clone(), v1.clone(), v2.clone()));
                             3
                         }
-                        &[v0, v1, v2, v3] => {
+                        [v0, v1, v2, v3] => {
                             nodes.push(Node::node2(v0.clone(), v1.clone()));
                             nodes.push(Node::node2(v2.clone(), v3.clone()));
                             4
@@ -648,7 +648,7 @@ impl<'a, V: Measured> IntoIterator for &'a FingerTree<V> {
     type Item = Rc<V>;
     type IntoIter = FingerTreeIter<V>;
     fn into_iter(self) -> Self::IntoIter {
-        return FingerTreeIter { tail: self.clone() };
+        FingerTreeIter { tail: self.clone() }
     }
 }
 
@@ -701,9 +701,68 @@ impl<T> Deref for Sized<T> {
 mod test {
     use super::*;
 
+    // constraint that is dynamic in current implementation but static in
+    // original algorithm due to the fact that rust does not support
+    // non-regualr recursive types. Each level of spine should add one level
+    // of depth to all nodes in current level.
+    fn validate<V: Measured>(ft: &FingerTree<V>) {
+        fn validate_node_rec<V: Measured>(depth: usize, node: &Node<V>) {
+            if depth == 0 {
+                match **node {
+                    NodeInner::Leaf(..) => (),
+                    _ => panic!("all zero depth nodes must be leafs"),
+                }
+            } else {
+                match **node {
+                    NodeInner::Leaf(..) => panic!("leaf node with depth: {}", depth),
+                    NodeInner::Node2 {
+                        ref left,
+                        ref right,
+                        ..
+                    } => {
+                        validate_node_rec(depth - 1, left);
+                        validate_node_rec(depth - 1, right)
+                    }
+                    NodeInner::Node3 {
+                        ref left,
+                        ref middle,
+                        ref right,
+                        ..
+                    } => {
+                        validate_node_rec(depth - 1, left);
+                        validate_node_rec(depth - 1, middle);
+                        validate_node_rec(depth - 1, right)
+                    }
+                }
+            }
+        }
+        fn validate_ft_rec<V: Measured>(depth: usize, ft: &FingerTreeRec<V>) {
+            match *ft.inner {
+                FingerTreeInner::Empty => (),
+                FingerTreeInner::Single(ref node) => validate_node_rec(depth, node),
+                FingerTreeInner::Deep {
+                    ref left,
+                    ref spine,
+                    ref right,
+                    ..
+                } => {
+                    for node in left.as_ref() {
+                        validate_node_rec(depth, node);
+                    }
+                    validate_ft_rec(depth + 1, spine);
+                    for node in right.as_ref() {
+                        validate_node_rec(depth, node);
+                    }
+                }
+            }
+        }
+        validate_ft_rec(0, &ft.rec)
+    }
+
     #[test]
     fn queue() {
         let ft: FingerTree<_> = (0..1024).map(Sized).collect();
+        validate(&ft);
         assert_eq!(ft.measure(), 1024);
 
         let mut count = 0;
