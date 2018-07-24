@@ -125,7 +125,7 @@ impl<V: Measured> Measured for Digit<V> {
 }
 
 impl<V: Measured> Digit<V> {
-    fn split<F>(&self, measure: &V::Measure, mut pred: F) -> (&[V], &V, &[V])
+    fn split<F>(&self, measure: &V::Measure, pred: &mut F) -> (&[V], &V, &[V])
     where
         F: FnMut(&V::Measure) -> bool,
     {
@@ -335,77 +335,6 @@ impl<V: Measured> FingerTreeRec<V> {
         }
     }
 
-    fn concat(left: &Self, mid: &[Node<V>], right: &Self) -> Self {
-        use FingerTreeInner::{Deep, Empty, Single};
-        match (left.inner.deref(), right.inner.deref()) {
-            (Empty, _) => mid.iter()
-                .rfold(right.clone(), |ft, item| ft.push_left(item.clone())),
-            (_, Empty) => mid.iter()
-                .fold(left.clone(), |ft, item| ft.push_right(item.clone())),
-            (Single(l), _) => mid.iter()
-                .rfold(right.clone(), |ft, item| ft.push_left(item.clone()))
-                .push_left(l.clone()),
-            (_, Single(r)) => mid.iter()
-                .rfold(right.clone(), |ft, item| ft.push_left(item.clone()))
-                .push_right(r.clone()),
-            (
-                Deep {
-                    left: left0,
-                    spine: spine0,
-                    right: right0,
-                    ..
-                },
-                Deep {
-                    left: left1,
-                    spine: spine1,
-                    right: right1,
-                    ..
-                },
-            ) => {
-                // lift values to nodes
-                let mut vals: Vec<_> = right0
-                    .as_ref()
-                    .iter()
-                    .chain(mid.iter())
-                    .chain(left1.as_ref().iter())
-                    .collect();
-                let mut current = vals.as_slice();
-                let mut nodes = Vec::new();
-                while !current.is_empty() {
-                    let consumed = match *current {
-                        [v0, v1] => {
-                            nodes.push(Node::node2(v0.clone(), v1.clone()));
-                            2
-                        }
-                        [v0, v1, v2] => {
-                            nodes.push(Node::node3(v0.clone(), v1.clone(), v2.clone()));
-                            3
-                        }
-                        [v0, v1, v2, v3] => {
-                            nodes.push(Node::node2(v0.clone(), v1.clone()));
-                            nodes.push(Node::node2(v2.clone(), v3.clone()));
-                            4
-                        }
-                        _ => {
-                            if let (&[v0, v1, v2], _) = current.split_at(3) {
-                                nodes.push(Node::node3(v0.clone(), v1.clone(), v2.clone()));
-                                3
-                            } else {
-                                unreachable!()
-                            }
-                        }
-                    };
-                    current = current.split_at(consumed).1;
-                }
-                Self::deep(
-                    left0.clone(),
-                    Self::concat(spine0, &nodes, spine1),
-                    right1.clone(),
-                )
-            }
-        }
-    }
-
     // left element is not `Digit` because `Digit` cannot be empty, but left in current
     // postion can be.
     fn deep_left(left: &[Node<V>], spine: &FingerTreeRec<V>, right: &Digit<Node<V>>) -> Self {
@@ -461,7 +390,7 @@ impl<V: Measured> FingerTreeRec<V> {
     fn split<F>(
         &self,
         measure: &V::Measure,
-        mut pred: F,
+        pred: &mut F,
     ) -> (FingerTreeRec<V>, Node<V>, FingerTreeRec<V>)
     where
         F: FnMut(&V::Measure) -> bool,
@@ -478,7 +407,7 @@ impl<V: Measured> FingerTreeRec<V> {
                 left, spine, right, ..
             } => {
                 // left
-                let left_measure = left.measure();
+                let left_measure = measure.clone() + left.measure();
                 if pred(&left_measure) {
                     let (l, x, r) = left.split(measure, pred);
                     return (
@@ -490,7 +419,7 @@ impl<V: Measured> FingerTreeRec<V> {
                 // spine
                 let spine_measure = left_measure.clone() + spine.measure();
                 if pred(&spine_measure) {
-                    let (sl, sx, sr) = spine.split(&left_measure, &mut pred);
+                    let (sl, sx, sr) = spine.split(&left_measure, pred);
                     let sx = Digit::from(&sx);
                     let (l, x, r) = sx.split(&(left_measure + sl.measure()), pred);
                     return (
@@ -505,6 +434,109 @@ impl<V: Measured> FingerTreeRec<V> {
                     Self::deep_right(left, spine, l),
                     x.clone(),
                     FingerTreeRec::from(r),
+                )
+            }
+        }
+    }
+
+    fn concat(left: &Self, mid: &[Node<V>], right: &Self) -> Self {
+        use FingerTreeInner::{Deep, Empty, Single};
+        match (left.inner.deref(), right.inner.deref()) {
+            (Empty, _) => mid.iter()
+                .rfold(right.clone(), |ft, item| ft.push_left(item.clone())),
+            (_, Empty) => mid.iter()
+                .fold(left.clone(), |ft, item| ft.push_right(item.clone())),
+            (Single(l), _) => mid.iter()
+                .rfold(right.clone(), |ft, item| ft.push_left(item.clone()))
+                .push_left(l.clone()),
+            (_, Single(r)) => mid.iter()
+                .fold(left.clone(), |ft, item| ft.push_right(item.clone()))
+                .push_right(r.clone()),
+            (
+                Deep {
+                    left: left0,
+                    spine: spine0,
+                    right: right0,
+                    ..
+                },
+                Deep {
+                    left: left1,
+                    spine: spine1,
+                    right: right1,
+                    ..
+                },
+            ) => {
+                // lift values to nodes
+                let left = right0.as_ref();
+                let right = left1.as_ref();
+
+                let mut count = left.len() + mid.len() + right.len();
+                let mut iter = left.iter().chain(mid).chain(right);
+                let mut nodes = Vec::with_capacity(count / 3 + 1);
+                while count != 0 {
+                    match (iter.next(), iter.next(), iter.next()) {
+                        (Some(v0), Some(v1), Some(v2)) => {
+                            count -= 3;
+                            nodes.push(Node::node3(v0.clone(), v1.clone(), v2.clone()));
+                        }
+                        (Some(v0), Some(v1), None) => {
+                            count -= 2;
+                            nodes.push(Node::node2(v0.clone(), v1.clone()));
+                        }
+                        (Some(v3), None, _) => {
+                            count -= 1;
+                            // this cannot be empty as left and right digit contain
+                            // at least one element each.
+                            match *nodes.pop().expect("concat variant violated") {
+                                NodeInner::Node3 {
+                                    left: ref v0,
+                                    middle: ref v1,
+                                    right: ref v2,
+                                    ..
+                                } => {
+                                    nodes.push(Node::node2(v0.clone(), v1.clone()));
+                                    nodes.push(Node::node2(v2.clone(), v3.clone()));
+                                }
+                                _ => panic!("only nodes3 must be inserted before this branch"),
+                            }
+                        }
+                        (None, _, _) => {}
+                    }
+                }
+
+                // let vals: Vec<_> = left.iter().chain(mid).chain(right).collect();
+                // let mut current = vals.as_slice();
+                // let mut nodes = Vec::new();
+                // while !current.is_empty() {
+                //     let consumed = match *current {
+                //         [v0, v1] => {
+                //             nodes.push(Node::node2(v0.clone(), v1.clone()));
+                //             2
+                //         }
+                //         [v0, v1, v2] => {
+                //             nodes.push(Node::node3(v0.clone(), v1.clone(), v2.clone()));
+                //             3
+                //         }
+                //         [v0, v1, v2, v3] => {
+                //             nodes.push(Node::node2(v0.clone(), v1.clone()));
+                //             nodes.push(Node::node2(v2.clone(), v3.clone()));
+                //             4
+                //         }
+                //         _ => {
+                //             if let (&[v0, v1, v2], _) = current.split_at(3) {
+                //                 nodes.push(Node::node3(v0.clone(), v1.clone(), v2.clone()));
+                //                 3
+                //             } else {
+                //                 unreachable!()
+                //             }
+                //         }
+                //     };
+                //     current = current.split_at(consumed).1;
+                // }
+                Self::deep(
+                    left0.clone(),
+                    Self::concat(spine0, &nodes, spine1),
+                    right1.clone(),
                 )
             }
         }
@@ -584,8 +616,8 @@ impl<V: Measured> FingerTree<V> {
     {
         if self.is_empty() {
             (Self::new(), Self::new())
-        } else if pred(&self.measure()) {
-            let (l, x, r) = self.rec.split(&V::measure_zero(), pred);
+        } else if (&mut pred)(&self.measure()) {
+            let (l, x, r) = self.rec.split(&V::measure_zero(), &mut pred);
             (
                 FingerTree { rec: l },
                 FingerTree {
@@ -612,14 +644,31 @@ impl<V: Measured> Measured for FingerTree<V> {
     }
 }
 
-impl<'a, V: Measured> Add for &'a FingerTree<V> {
+impl<'a, 'b, V: Measured> Add<&'b FingerTree<V>> for &'a FingerTree<V> {
     type Output = FingerTree<V>;
 
-    fn add(self, other: &FingerTree<V>) -> Self::Output {
+    fn add(self, other: &'b FingerTree<V>) -> Self::Output {
         FingerTree {
             rec: FingerTreeRec::concat(&self.rec, &[], &other.rec),
         }
     }
+}
+
+impl<V> PartialEq for FingerTree<V>
+where
+    V: Measured + PartialEq,
+    V::Measure: PartialEq,
+{
+    fn eq(&self, other: &FingerTree<V>) -> bool {
+        self.iter().zip(other).all(|(a, b)| a == b)
+    }
+}
+
+impl<V> Eq for FingerTree<V>
+where
+    V: Measured + Eq,
+    V::Measure: Eq,
+{
 }
 
 pub struct FingerTreeIter<V: Measured> {
@@ -677,8 +726,17 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(PartialEq, Eq)]
 pub struct Sized<T>(T);
+
+impl<T> fmt::Debug for Sized<T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl<T> Measured for Sized<T> {
     type Measure = usize;
@@ -701,12 +759,22 @@ impl<T> Deref for Sized<T> {
 mod test {
     use super::*;
 
+    const COUNT: usize = 256;
+
     // constraint that is dynamic in current implementation but static in
     // original algorithm due to the fact that rust does not support
     // non-regualr recursive types. Each level of spine should add one level
     // of depth to all nodes in current level.
-    fn validate<V: Measured>(ft: &FingerTree<V>) {
-        fn validate_node_rec<V: Measured>(depth: usize, node: &Node<V>) {
+    fn validate<V>(ft: &FingerTree<V>)
+    where
+        V: Measured,
+        V::Measure: Eq + PartialEq + fmt::Debug,
+    {
+        fn validate_node_rec<V>(depth: usize, node: &Node<V>)
+        where
+            V: Measured,
+            V::Measure: Eq + PartialEq + fmt::Debug,
+        {
             if depth == 0 {
                 match **node {
                     NodeInner::Leaf(..) => (),
@@ -718,25 +786,34 @@ mod test {
                     NodeInner::Node2 {
                         ref left,
                         ref right,
-                        ..
+                        ref measure,
                     } => {
                         validate_node_rec(depth - 1, left);
-                        validate_node_rec(depth - 1, right)
+                        validate_node_rec(depth - 1, right);
+                        assert_eq!(measure.clone(), left.measure() + right.measure());
                     }
                     NodeInner::Node3 {
                         ref left,
                         ref middle,
                         ref right,
-                        ..
+                        ref measure,
                     } => {
                         validate_node_rec(depth - 1, left);
                         validate_node_rec(depth - 1, middle);
-                        validate_node_rec(depth - 1, right)
+                        validate_node_rec(depth - 1, right);
+                        assert_eq!(
+                            measure.clone(),
+                            left.measure() + middle.measure() + right.measure()
+                        );
                     }
                 }
             }
         }
-        fn validate_ft_rec<V: Measured>(depth: usize, ft: &FingerTreeRec<V>) {
+        fn validate_ft_rec<V>(depth: usize, ft: &FingerTreeRec<V>)
+        where
+            V: Measured,
+            V::Measure: Eq + PartialEq + fmt::Debug,
+        {
             match *ft.inner {
                 FingerTreeInner::Empty => (),
                 FingerTreeInner::Single(ref node) => validate_node_rec(depth, node),
@@ -744,15 +821,24 @@ mod test {
                     ref left,
                     ref spine,
                     ref right,
-                    ..
+                    ref measure,
                 } => {
+                    let mut m = V::measure_zero();
+
                     for node in left.as_ref() {
                         validate_node_rec(depth, node);
+                        m = m + node.measure();
                     }
+
                     validate_ft_rec(depth + 1, spine);
+                    m = m + spine.measure();
+
                     for node in right.as_ref() {
                         validate_node_rec(depth, node);
+                        m = m + node.measure();
                     }
+
+                    assert_eq!(measure.clone(), m);
                 }
             }
         }
@@ -761,9 +847,9 @@ mod test {
 
     #[test]
     fn queue() {
-        let ft: FingerTree<_> = (0..1024).map(Sized).collect();
+        let ft: FingerTree<_> = (0..COUNT).map(Sized).collect();
         validate(&ft);
-        assert_eq!(ft.measure(), 1024);
+        assert_eq!(ft.measure(), COUNT);
 
         let mut count = 0;
         for (value, expected) in ft.iter().zip(0..) {
@@ -771,5 +857,40 @@ mod test {
             count += 1;
         }
         assert_eq!(ft.measure(), count);
+    }
+
+    #[test]
+    fn concat() {
+        for split in 0..COUNT {
+            let left: FingerTree<_> = (0..split).map(Sized).collect();
+            let right: FingerTree<_> = (split..COUNT).map(Sized).collect();
+
+            let ft = &left + &right;
+            assert_eq!(ft.measure(), left.measure() + right.measure());
+            validate(&left);
+            validate(&right);
+            validate(&ft);
+
+            for (value, expected) in ft.iter().zip(0..) {
+                assert_eq!(
+                    **value, expected,
+                    "failed to concat: {:?} {:?}",
+                    left, right
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn split() {
+        let ft: FingerTree<_> = (0..COUNT).map(Sized).collect();
+        for split in 0..COUNT {
+            let (left, right) = ft.split(|m| m > &split);
+            validate(&left);
+            validate(&right);
+            assert_eq!(left.measure(), split);
+            assert_eq!(right.measure(), COUNT - split);
+            assert_eq!(ft, &left + &right);
+        }
     }
 }
