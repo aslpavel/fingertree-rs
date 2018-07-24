@@ -629,6 +629,12 @@ impl<V: Measured> FingerTree<V> {
         }
     }
 
+    pub fn concat(&self, other: &Self) -> Self {
+        FingerTree {
+            rec: FingerTreeRec::concat(&self.rec, &[], &other.rec),
+        }
+    }
+
     pub fn iter(&self) -> FingerTreeIter<V> {
         FingerTreeIter { tail: self.clone() }
     }
@@ -648,16 +654,13 @@ impl<'a, 'b, V: Measured> Add<&'b FingerTree<V>> for &'a FingerTree<V> {
     type Output = FingerTree<V>;
 
     fn add(self, other: &'b FingerTree<V>) -> Self::Output {
-        FingerTree {
-            rec: FingerTreeRec::concat(&self.rec, &[], &other.rec),
-        }
+        self.concat(other)
     }
 }
 
 impl<V> PartialEq for FingerTree<V>
 where
     V: Measured + PartialEq,
-    V::Measure: PartialEq,
 {
     fn eq(&self, other: &FingerTree<V>) -> bool {
         self.iter().zip(other).all(|(a, b)| a == b)
@@ -667,7 +670,6 @@ where
 impl<V> Eq for FingerTree<V>
 where
     V: Measured + Eq,
-    V::Measure: Eq,
 {
 }
 
@@ -727,7 +729,7 @@ where
 }
 
 #[derive(PartialEq, Eq)]
-pub struct Sized<T>(T);
+pub struct Sized<T>(pub T);
 
 impl<T> fmt::Debug for Sized<T>
 where
