@@ -1,0 +1,13 @@
+[package]
+name = "fingertree"
+version = "0.1.0"
+authors = ["Pavel Aslanov <asl.pavel@gmail.com>"]
+
+[dependencies]
+
+[dev-dependencies]
+criterion = "0.2"
+
+[[bench]]
+name = "criterion"
+harness = false
