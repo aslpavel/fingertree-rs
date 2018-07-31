@@ -8,6 +8,9 @@ authors = ["Pavel Aslanov <asl.pavel@gmail.com>"]
 [dev-dependencies]
 criterion = "0.2"
 
+[lib]
+bench = false
+
 [[bench]]
 name = "criterion"
 harness = false

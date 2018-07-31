@@ -4,8 +4,10 @@ extern crate fingertree;
 
 use criterion::Criterion;
 use fingertree::{FingerTree, Sized};
+use std::collections::HashMap;
 
 const KB: usize = 1024;
+const SPLIT_1024: &[usize] = &[211, 384, 557, 730, 903];
 
 fn bench_from(c: &mut Criterion) {
     c.bench_function_over_inputs(
@@ -15,17 +17,37 @@ fn bench_from(c: &mut Criterion) {
     );
 }
 
-fn bench_split_1024(c: &mut Criterion) {
+fn bench_split(c: &mut Criterion) {
     let ft: FingerTree<_> = (0..1024).map(Sized).collect();
-    c.bench_function("split 1024 at 111", move |b| {
-        b.iter(|| ft.split(|m| m > &111))
-    });
+    c.bench_function_over_inputs(
+        "split",
+        move |b, &size| b.iter(|| ft.split(|m| m > size)),
+        SPLIT_1024,
+    );
+}
+
+fn bench_concat(c: &mut Criterion) {
+    let ft: FingerTree<_> = (0..1024).map(Sized).collect();
+    let ft_split: HashMap<_, _> = SPLIT_1024
+        .iter()
+        .map(|size| (size, ft.split(|m| m > size)))
+        .collect();
+
+    c.bench_function_over_inputs(
+        "concat",
+        move |b, k| {
+            let (ref left, ref right) = ft_split[*k];
+            b.iter(|| left.concat(right))
+        },
+        SPLIT_1024,
+    );
 }
 
 criterion_group! {
     benches,
     bench_from,
-    bench_split_1024,
+    bench_split,
+    bench_concat,
 }
 
 criterion_main!(benches);

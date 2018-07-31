@@ -504,35 +504,6 @@ impl<V: Measured> FingerTreeRec<V> {
                     }
                 }
 
-                // let vals: Vec<_> = left.iter().chain(mid).chain(right).collect();
-                // let mut current = vals.as_slice();
-                // let mut nodes = Vec::new();
-                // while !current.is_empty() {
-                //     let consumed = match *current {
-                //         [v0, v1] => {
-                //             nodes.push(Node::node2(v0.clone(), v1.clone()));
-                //             2
-                //         }
-                //         [v0, v1, v2] => {
-                //             nodes.push(Node::node3(v0.clone(), v1.clone(), v2.clone()));
-                //             3
-                //         }
-                //         [v0, v1, v2, v3] => {
-                //             nodes.push(Node::node2(v0.clone(), v1.clone()));
-                //             nodes.push(Node::node2(v2.clone(), v3.clone()));
-                //             4
-                //         }
-                //         _ => {
-                //             if let (&[v0, v1, v2], _) = current.split_at(3) {
-                //                 nodes.push(Node::node3(v0.clone(), v1.clone(), v2.clone()));
-                //                 3
-                //             } else {
-                //                 unreachable!()
-                //             }
-                //         }
-                //     };
-                //     current = current.split_at(consumed).1;
-                // }
                 Self::deep(
                     left0.clone(),
                     Self::concat(spine0, &nodes, spine1),
