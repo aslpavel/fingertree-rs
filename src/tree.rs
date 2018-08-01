@@ -5,7 +5,8 @@ use std::rc::Rc;
 
 use self::FingerTreeInner::{Deep, Empty, Single};
 use digit::Digit;
-use measured::Measured;
+use measure::Measured;
+use monoid::Monoid;
 use node::{Node, NodeInner};
 
 enum FingerTreeInner<V: Measured> {
@@ -21,12 +22,10 @@ enum FingerTreeInner<V: Measured> {
 
 impl<V: Measured> Measured for FingerTreeInner<V> {
     type Measure = V::Measure;
-    fn measure_zero() -> Self::Measure {
-        V::measure_zero()
-    }
+
     fn measure(&self) -> Self::Measure {
         match self {
-            Empty => Self::measure_zero(),
+            Empty => Self::Measure::zero(),
             Single(node) => node.measure(),
             Deep { measure, .. } => measure.clone(),
         }
@@ -39,9 +38,7 @@ struct FingerTreeRec<V: Measured> {
 
 impl<V: Measured> Measured for FingerTreeRec<V> {
     type Measure = V::Measure;
-    fn measure_zero() -> Self::Measure {
-        V::measure_zero()
-    }
+
     fn measure(&self) -> Self::Measure {
         self.inner.measure()
     }
@@ -69,7 +66,9 @@ impl<V: Measured> FingerTreeRec<V> {
     }
 
     fn deep(left: Digit<Node<V>>, spine: FingerTreeRec<V>, right: Digit<Node<V>>) -> Self {
-        let measure = left.measure() + spine.inner.measure() + right.measure();
+        let measure = left.measure()
+            .plus(&spine.inner.measure())
+            .plus(&right.measure());
         FingerTreeRec {
             inner: Rc::new(FingerTreeInner::Deep {
                 measure,
@@ -197,7 +196,7 @@ impl<V: Measured> FingerTreeRec<V> {
                 left, spine, right, ..
             } => {
                 // left
-                let left_measure = measure.clone() + left.measure();
+                let left_measure = measure.plus(&left.measure());
                 if pred(&left_measure) {
                     let (l, x, r) = left.split(measure, pred);
                     return (
@@ -207,11 +206,11 @@ impl<V: Measured> FingerTreeRec<V> {
                     );
                 }
                 // spine
-                let spine_measure = left_measure.clone() + spine.measure();
+                let spine_measure = left_measure.plus(&spine.measure());
                 if pred(&spine_measure) {
                     let (sl, sx, sr) = spine.split(&left_measure, pred);
                     let sx = Digit::from(&sx);
-                    let (l, x, r) = sx.split(&(left_measure + sl.measure()), pred);
+                    let (l, x, r) = sx.split(&left_measure.plus(&sl.measure()), pred);
                     return (
                         Self::deep_right(left, &sl, l),
                         x.clone(),
@@ -377,7 +376,7 @@ impl<V: Measured> FingerTree<V> {
         if self.is_empty() {
             (Self::new(), Self::new())
         } else if (&mut pred)(&self.measure()) {
-            let (l, x, r) = self.rec.split(&V::measure_zero(), &mut pred);
+            let (l, x, r) = self.rec.split(&V::Measure::zero(), &mut pred);
             (
                 FingerTree { rec: l },
                 FingerTree {
@@ -402,9 +401,7 @@ impl<V: Measured> FingerTree<V> {
 
 impl<V: Measured> Measured for FingerTree<V> {
     type Measure = V::Measure;
-    fn measure_zero() -> Self::Measure {
-        V::measure_zero()
-    }
+
     fn measure(&self) -> Self::Measure {
         self.rec.measure()
     }
@@ -497,9 +494,9 @@ impl<V: Measured> Default for FingerTree<V> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use measured::Sized;
+    use measure::Size;
 
-    const COUNT: usize = 256;
+    const TEST_SIZE: usize = 512;
 
     // constraint that is dynamic in current implementation but static in
     // original algorithm due to the fact that rust does not support
@@ -530,7 +527,7 @@ mod test {
                     } => {
                         validate_node_rec(depth - 1, left);
                         validate_node_rec(depth - 1, right);
-                        assert_eq!(measure.clone(), left.measure() + right.measure());
+                        assert_eq!(measure.clone(), left.measure().plus(&right.measure()));
                     }
                     NodeInner::Node3 {
                         ref left,
@@ -543,7 +540,9 @@ mod test {
                         validate_node_rec(depth - 1, right);
                         assert_eq!(
                             measure.clone(),
-                            left.measure() + middle.measure() + right.measure()
+                            left.measure()
+                                .plus(&middle.measure())
+                                .plus(&right.measure())
                         );
                     }
                 }
@@ -563,19 +562,19 @@ mod test {
                     ref right,
                     ref measure,
                 } => {
-                    let mut m = V::measure_zero();
+                    let mut m = V::Measure::zero();
 
                     for node in left.as_ref() {
                         validate_node_rec(depth, node);
-                        m = m + node.measure();
+                        m = m.plus(&node.measure());
                     }
 
                     validate_ft_rec(depth + 1, spine);
-                    m = m + spine.measure();
+                    m = m.plus(&spine.measure());
 
                     for node in right.as_ref() {
                         validate_node_rec(depth, node);
-                        m = m + node.measure();
+                        m = m.plus(&node.measure());
                     }
 
                     assert_eq!(measure.clone(), m);
@@ -587,26 +586,26 @@ mod test {
 
     #[test]
     fn queue() {
-        let ft: FingerTree<_> = (0..COUNT).map(Sized).collect();
+        let ft: FingerTree<_> = (0..TEST_SIZE).map(Size).collect();
         validate(&ft);
-        assert_eq!(ft.measure(), COUNT);
+        assert_eq!(ft.measure().value, TEST_SIZE);
 
         let mut count = 0;
         for (value, expected) in ft.iter().zip(0..) {
             assert_eq!(**value, expected);
             count += 1;
         }
-        assert_eq!(ft.measure(), count);
+        assert_eq!(ft.measure().value, count);
     }
 
     #[test]
     fn concat() {
-        for split in 0..COUNT {
-            let left: FingerTree<_> = (0..split).map(Sized).collect();
-            let right: FingerTree<_> = (split..COUNT).map(Sized).collect();
+        for split in 0..TEST_SIZE {
+            let left: FingerTree<_> = (0..split).map(Size).collect();
+            let right: FingerTree<_> = (split..TEST_SIZE).map(Size).collect();
 
             let ft = &left + &right;
-            assert_eq!(ft.measure(), left.measure() + right.measure());
+            assert_eq!(ft.measure(), left.measure().plus(&right.measure()));
             validate(&left);
             validate(&right);
             validate(&ft);
@@ -623,24 +622,24 @@ mod test {
 
     #[test]
     fn split() {
-        let ft: FingerTree<_> = (0..COUNT).map(Sized).collect();
-        for split in 0..COUNT {
-            let (left, right) = ft.split(|m| m > &split);
+        let ft: FingerTree<_> = (0..TEST_SIZE).map(Size).collect();
+        for split in 0..TEST_SIZE {
+            let (left, right) = ft.split(|m| m.value > split);
             validate(&left);
             validate(&right);
-            assert_eq!(left.measure(), split);
-            assert_eq!(right.measure(), COUNT - split);
+            assert_eq!(left.measure().value, split);
+            assert_eq!(right.measure().value, TEST_SIZE - split);
             assert_eq!(ft, &left + &right);
         }
     }
 
     #[test]
     fn reversed() {
-        let ft: FingerTree<_> = (0..COUNT).map(Sized).collect();
+        let ft: FingerTree<_> = (0..TEST_SIZE).map(Size).collect();
         assert_eq!(
             ft.iter().rev().collect::<Vec<_>>(),
-            (0..COUNT)
-                .map(|v| Rc::new(Sized(v)))
+            (0..TEST_SIZE)
+                .map(|v| Rc::new(Size(v)))
                 .rev()
                 .collect::<Vec<_>>()
         );

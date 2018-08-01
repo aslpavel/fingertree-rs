@@ -11,9 +11,9 @@
 //  - lazy spine?
 
 mod digit;
-mod measured;
+pub mod measure;
+pub mod monoid;
 mod node;
 mod tree;
 
-pub use measured::{Measured, Sized};
 pub use tree::FingerTree;

@@ -1,6 +1,7 @@
 use std::ops::{Add, Deref};
 
-use measured::Measured;
+use measure::Measured;
+use monoid::Monoid;
 use node::{Node, NodeInner};
 
 #[derive(Clone)]
@@ -9,18 +10,6 @@ pub(crate) enum Digit<V> {
     Two([V; 2]),
     Three([V; 3]),
     Four([V; 4]),
-}
-
-impl<V: Measured> Measured for Digit<V> {
-    type Measure = V::Measure;
-    fn measure_zero() -> Self::Measure {
-        V::measure_zero()
-    }
-    fn measure(&self) -> Self::Measure {
-        self.as_ref()
-            .iter()
-            .fold(Self::measure_zero(), |measure, val| measure + val.measure())
-    }
 }
 
 impl<V: Measured> Digit<V> {
@@ -35,24 +24,13 @@ impl<V: Measured> Digit<V> {
             let slice = self.as_ref();
             let mut measure = measure.clone();
             for (index, item) in slice.iter().enumerate() {
-                measure = measure + item.measure();
+                measure = measure.plus(&item.measure());
                 if pred(&measure) {
                     return (&slice[..index], &slice[index], &slice[index + 1..]);
                 }
             }
             let index = slice.len() - 1;
             (&slice[..index], &slice[index], &[])
-        }
-    }
-}
-
-impl<V> AsRef<[V]> for Digit<V> {
-    fn as_ref(&self) -> &[V] {
-        match self {
-            Digit::One(v) => v,
-            Digit::Two(v) => v,
-            Digit::Three(v) => v,
-            Digit::Four(v) => v,
         }
     }
 }
@@ -77,6 +55,29 @@ where
                 "impossible to create digit of size: {}",
                 self.as_ref().len() + other.as_ref().len(),
             ),
+        }
+    }
+}
+
+impl<V: Measured> Measured for Digit<V> {
+    type Measure = V::Measure;
+
+    fn measure(&self) -> Self::Measure {
+        self.as_ref()
+            .iter()
+            .fold(Self::Measure::zero(), |measure, val| {
+                measure.plus(&val.measure())
+            })
+    }
+}
+
+impl<V> AsRef<[V]> for Digit<V> {
+    fn as_ref(&self) -> &[V] {
+        match self {
+            Digit::One(v) => v,
+            Digit::Two(v) => v,
+            Digit::Three(v) => v,
+            Digit::Four(v) => v,
         }
     }
 }
