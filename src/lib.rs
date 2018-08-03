@@ -16,4 +16,9 @@ pub mod monoid;
 mod node;
 mod tree;
 
+#[cfg(test)]
+mod test;
+
+pub use measure::Measured;
+pub use monoid::Monoid;
 pub use tree::FingerTree;

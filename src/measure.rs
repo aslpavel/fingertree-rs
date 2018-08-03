@@ -9,6 +9,18 @@ pub trait Measured {
     fn measure(&self) -> Self::Measure;
 }
 
+// impl<T> Measured for T
+// where
+//     T: Deref,
+//     T::Target: Measured,
+// {
+//     type Measure = <T::Target as Measured>::Measure;
+
+//     fn measure(&self) -> Self::Measure {
+//         (*self).measure()
+//     }
+// }
+
 #[derive(PartialEq, Eq)]
 pub struct Size<T>(pub T);
 

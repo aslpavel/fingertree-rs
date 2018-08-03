@@ -9,7 +9,7 @@ use measure::Measured;
 use monoid::Monoid;
 use node::{Node, NodeInner};
 
-enum FingerTreeInner<V: Measured> {
+pub(crate) enum FingerTreeInner<V: Measured> {
     Empty,
     Single(Node<V>),
     Deep {
@@ -32,8 +32,8 @@ impl<V: Measured> Measured for FingerTreeInner<V> {
     }
 }
 
-struct FingerTreeRec<V: Measured> {
-    inner: Rc<FingerTreeInner<V>>,
+pub(crate) struct FingerTreeRec<V: Measured> {
+    pub(crate) inner: Rc<FingerTreeInner<V>>,
 }
 
 impl<V: Measured> Measured for FingerTreeRec<V> {
@@ -66,7 +66,8 @@ impl<V: Measured> FingerTreeRec<V> {
     }
 
     fn deep(left: Digit<Node<V>>, spine: FingerTreeRec<V>, right: Digit<Node<V>>) -> Self {
-        let measure = left.measure()
+        let measure = left
+            .measure()
             .plus(&spine.inner.measure())
             .plus(&right.measure());
         FingerTreeRec {
@@ -230,14 +231,18 @@ impl<V: Measured> FingerTreeRec<V> {
 
     fn concat(left: &Self, mid: &[Node<V>], right: &Self) -> Self {
         match (left.inner.deref(), right.inner.deref()) {
-            (Empty, _) => mid.iter()
+            (Empty, _) => mid
+                .iter()
                 .rfold(right.clone(), |ft, item| ft.push_left(item.clone())),
-            (_, Empty) => mid.iter()
+            (_, Empty) => mid
+                .iter()
                 .fold(left.clone(), |ft, item| ft.push_right(item.clone())),
-            (Single(l), _) => mid.iter()
+            (Single(l), _) => mid
+                .iter()
                 .rfold(right.clone(), |ft, item| ft.push_left(item.clone()))
                 .push_left(l.clone()),
-            (_, Single(r)) => mid.iter()
+            (_, Single(r)) => mid
+                .iter()
                 .fold(left.clone(), |ft, item| ft.push_right(item.clone()))
                 .push_right(r.clone()),
             (
@@ -316,7 +321,7 @@ where
 }
 
 pub struct FingerTree<V: Measured> {
-    rec: FingerTreeRec<V>,
+    pub(crate) rec: FingerTreeRec<V>,
 }
 
 impl<V: Measured> Clone for FingerTree<V> {
@@ -424,11 +429,7 @@ where
     }
 }
 
-impl<V> Eq for FingerTree<V>
-where
-    V: Measured + Eq,
-{
-}
+impl<V> Eq for FingerTree<V> where V: Measured + Eq {}
 
 pub struct FingerTreeIter<V: Measured> {
     tail: FingerTree<V>,
@@ -488,160 +489,5 @@ where
 impl<V: Measured> Default for FingerTree<V> {
     fn default() -> Self {
         FingerTree::new()
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use measure::Size;
-
-    const TEST_SIZE: usize = 512;
-
-    // constraint that is dynamic in current implementation but static in
-    // original algorithm due to the fact that rust does not support
-    // non-regualr recursive types. Each level of spine should add one level
-    // of depth to all nodes in current level.
-    fn validate<V>(ft: &FingerTree<V>)
-    where
-        V: Measured,
-        V::Measure: Eq + PartialEq + fmt::Debug,
-    {
-        fn validate_node_rec<V>(depth: usize, node: &Node<V>)
-        where
-            V: Measured,
-            V::Measure: Eq + PartialEq + fmt::Debug,
-        {
-            if depth == 0 {
-                match **node {
-                    NodeInner::Leaf(..) => (),
-                    _ => panic!("all zero depth nodes must be leafs"),
-                }
-            } else {
-                match **node {
-                    NodeInner::Leaf(..) => panic!("leaf node with depth: {}", depth),
-                    NodeInner::Node2 {
-                        ref left,
-                        ref right,
-                        ref measure,
-                    } => {
-                        validate_node_rec(depth - 1, left);
-                        validate_node_rec(depth - 1, right);
-                        assert_eq!(measure.clone(), left.measure().plus(&right.measure()));
-                    }
-                    NodeInner::Node3 {
-                        ref left,
-                        ref middle,
-                        ref right,
-                        ref measure,
-                    } => {
-                        validate_node_rec(depth - 1, left);
-                        validate_node_rec(depth - 1, middle);
-                        validate_node_rec(depth - 1, right);
-                        assert_eq!(
-                            measure.clone(),
-                            left.measure()
-                                .plus(&middle.measure())
-                                .plus(&right.measure())
-                        );
-                    }
-                }
-            }
-        }
-        fn validate_ft_rec<V>(depth: usize, ft: &FingerTreeRec<V>)
-        where
-            V: Measured,
-            V::Measure: Eq + PartialEq + fmt::Debug,
-        {
-            match *ft.inner {
-                FingerTreeInner::Empty => (),
-                FingerTreeInner::Single(ref node) => validate_node_rec(depth, node),
-                FingerTreeInner::Deep {
-                    ref left,
-                    ref spine,
-                    ref right,
-                    ref measure,
-                } => {
-                    let mut m = V::Measure::zero();
-
-                    for node in left.as_ref() {
-                        validate_node_rec(depth, node);
-                        m = m.plus(&node.measure());
-                    }
-
-                    validate_ft_rec(depth + 1, spine);
-                    m = m.plus(&spine.measure());
-
-                    for node in right.as_ref() {
-                        validate_node_rec(depth, node);
-                        m = m.plus(&node.measure());
-                    }
-
-                    assert_eq!(measure.clone(), m);
-                }
-            }
-        }
-        validate_ft_rec(0, &ft.rec)
-    }
-
-    #[test]
-    fn queue() {
-        let ft: FingerTree<_> = (0..TEST_SIZE).map(Size).collect();
-        validate(&ft);
-        assert_eq!(ft.measure().value, TEST_SIZE);
-
-        let mut count = 0;
-        for (value, expected) in ft.iter().zip(0..) {
-            assert_eq!(**value, expected);
-            count += 1;
-        }
-        assert_eq!(ft.measure().value, count);
-    }
-
-    #[test]
-    fn concat() {
-        for split in 0..TEST_SIZE {
-            let left: FingerTree<_> = (0..split).map(Size).collect();
-            let right: FingerTree<_> = (split..TEST_SIZE).map(Size).collect();
-
-            let ft = &left + &right;
-            assert_eq!(ft.measure(), left.measure().plus(&right.measure()));
-            validate(&left);
-            validate(&right);
-            validate(&ft);
-
-            for (value, expected) in ft.iter().zip(0..) {
-                assert_eq!(
-                    **value, expected,
-                    "failed to concat: {:?} {:?}",
-                    left, right
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn split() {
-        let ft: FingerTree<_> = (0..TEST_SIZE).map(Size).collect();
-        for split in 0..TEST_SIZE {
-            let (left, right) = ft.split(|m| m.value > split);
-            validate(&left);
-            validate(&right);
-            assert_eq!(left.measure().value, split);
-            assert_eq!(right.measure().value, TEST_SIZE - split);
-            assert_eq!(ft, &left + &right);
-        }
-    }
-
-    #[test]
-    fn reversed() {
-        let ft: FingerTree<_> = (0..TEST_SIZE).map(Size).collect();
-        assert_eq!(
-            ft.iter().rev().collect::<Vec<_>>(),
-            (0..TEST_SIZE)
-                .map(|v| Rc::new(Size(v)))
-                .rev()
-                .collect::<Vec<_>>()
-        );
     }
 }
