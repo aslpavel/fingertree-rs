@@ -1,42 +1,51 @@
 use std::ops::Deref;
-use std::rc::Rc;
 
 use measure::Measured;
 use monoid::Monoid;
+use reference::{Ref, Refs};
 
-pub(crate) enum NodeInner<V: Measured> {
-    Leaf(Rc<V>),
+pub enum NodeInner<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    Leaf(R::Value),
     Node2 {
         measure: V::Measure,
-        left: Node<V>,
-        right: Node<V>,
+        left: Node<R, V>,
+        right: Node<R, V>,
     },
     Node3 {
         measure: V::Measure,
-        left: Node<V>,
-        middle: Node<V>,
-        right: Node<V>,
+        left: Node<R, V>,
+        middle: Node<R, V>,
+        right: Node<R, V>,
     },
 }
 
-pub(crate) struct Node<V: Measured> {
-    inner: Rc<NodeInner<V>>,
-}
-
-impl<V> Node<V>
+pub struct Node<R, V>
 where
+    R: Refs<V>,
     V: Measured,
 {
-    pub(crate) fn leaf(value: Rc<V>) -> Self {
+    inner: R::Node,
+}
+
+impl<R, V> Node<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    pub(crate) fn leaf(value: R::Value) -> Self {
         Node {
-            inner: Rc::new(NodeInner::Leaf(value)),
+            inner: R::Node::new(NodeInner::Leaf(value)),
         }
     }
 
     pub(crate) fn node2(left: Self, right: Self) -> Self {
         let measure = left.measure().plus(&right.measure());
         Node {
-            inner: Rc::new(NodeInner::Node2 {
+            inner: R::Node::new(NodeInner::Node2 {
                 measure,
                 left,
                 right,
@@ -45,11 +54,12 @@ where
     }
 
     pub(crate) fn node3(left: Self, middle: Self, right: Self) -> Self {
-        let measure = left.measure()
+        let measure = left
+            .measure()
             .plus(&middle.measure())
             .plus(&right.measure());
         Node {
-            inner: Rc::new(NodeInner::Node3 {
+            inner: R::Node::new(NodeInner::Node3 {
                 measure,
                 left,
                 middle,
@@ -59,7 +69,11 @@ where
     }
 }
 
-impl<V: Measured> Clone for Node<V> {
+impl<R, V> Clone for Node<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
     fn clone(&self) -> Self {
         Node {
             inner: self.inner.clone(),
@@ -67,8 +81,9 @@ impl<V: Measured> Clone for Node<V> {
     }
 }
 
-impl<V> Measured for Node<V>
+impl<R, V> Measured for Node<R, V>
 where
+    R: Refs<V>,
     V: Measured,
 {
     type Measure = V::Measure;
@@ -82,8 +97,12 @@ where
     }
 }
 
-impl<V: Measured> Deref for Node<V> {
-    type Target = NodeInner<V>;
+impl<R, V> Deref for Node<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    type Target = NodeInner<R, V>;
     fn deref(&self) -> &Self::Target {
         self.inner.deref()
     }

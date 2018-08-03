@@ -3,16 +3,20 @@ use std::ops::{Add, Deref};
 use measure::Measured;
 use monoid::Monoid;
 use node::{Node, NodeInner};
+use reference::Refs;
 
 #[derive(Clone)]
-pub(crate) enum Digit<V> {
+pub enum Digit<V> {
     One([V; 1]),
     Two([V; 2]),
     Three([V; 3]),
     Four([V; 4]),
 }
 
-impl<V: Measured> Digit<V> {
+impl<V> Digit<V>
+where
+    V: Measured,
+{
     pub(crate) fn split<F>(&self, measure: &V::Measure, pred: &mut F) -> (&[V], &V, &[V])
     where
         F: FnMut(&V::Measure) -> bool,
@@ -97,8 +101,12 @@ where
     }
 }
 
-impl<'a, V: Measured> From<&'a Node<V>> for Digit<Node<V>> {
-    fn from(node: &'a Node<V>) -> Digit<Node<V>> {
+impl<'a, R, V: Measured> From<&'a Node<R, V>> for Digit<Node<R, V>>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    fn from(node: &'a Node<R, V>) -> Digit<Node<R, V>> {
         match &node.deref() {
             NodeInner::Leaf(..) => Digit::One([node.clone()]),
             NodeInner::Node2 { left, right, .. } => Digit::Two([left.clone(), right.clone()]),

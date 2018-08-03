@@ -4,7 +4,7 @@ extern crate fingertree;
 
 use criterion::Criterion;
 use fingertree::measure::Size;
-use fingertree::FingerTree;
+use fingertree::sync::FingerTree;
 use std::collections::HashMap;
 
 const KB: usize = 1024;

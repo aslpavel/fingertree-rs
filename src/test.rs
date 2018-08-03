@@ -4,6 +4,8 @@ use std::rc::Rc;
 use measure::{Measured, Size};
 use monoid::Monoid;
 use node::{Node, NodeInner};
+use reference::{RcRefs, Refs};
+use sync::FingerTree as SyncFingerTree;
 use tree::{FingerTree, FingerTreeInner, FingerTreeRec};
 
 const TEST_SIZE: usize = 512;
@@ -12,13 +14,15 @@ const TEST_SIZE: usize = 512;
 // original algorithm due to the fact that rust does not support
 // non-regualr recursive types. Each level of spine should add one level
 // of depth to all nodes in current level.
-fn validate<V>(ft: &FingerTree<V>)
+pub fn validate<R, V>(ft: &FingerTree<R, V>)
 where
+    R: Refs<V>,
     V: Measured,
     V::Measure: Eq + PartialEq + fmt::Debug,
 {
-    fn validate_node_rec<V>(depth: usize, node: &Node<V>)
+    fn validate_node_rec<R, V>(depth: usize, node: &Node<R, V>)
     where
+        R: Refs<V>,
         V: Measured,
         V::Measure: Eq + PartialEq + fmt::Debug,
     {
@@ -58,8 +62,9 @@ where
             }
         }
     }
-    fn validate_ft_rec<V>(depth: usize, ft: &FingerTreeRec<V>)
+    fn validate_ft_rec<R, V>(depth: usize, ft: &FingerTreeRec<R, V>)
     where
+        R: Refs<V>,
         V: Measured,
         V::Measure: Eq + PartialEq + fmt::Debug,
     {
@@ -96,7 +101,7 @@ where
 
 #[test]
 fn queue() {
-    let ft: FingerTree<_> = (0..TEST_SIZE).map(Size).collect();
+    let ft: FingerTree<RcRefs, _> = (0..TEST_SIZE).map(Size).collect();
     validate(&ft);
     assert_eq!(ft.measure().value, TEST_SIZE);
 
@@ -111,8 +116,8 @@ fn queue() {
 #[test]
 fn concat() {
     for split in 0..TEST_SIZE {
-        let left: FingerTree<_> = (0..split).map(Size).collect();
-        let right: FingerTree<_> = (split..TEST_SIZE).map(Size).collect();
+        let left: FingerTree<RcRefs, _> = (0..split).map(Size).collect();
+        let right: FingerTree<RcRefs, _> = (split..TEST_SIZE).map(Size).collect();
 
         let ft = &left + &right;
         assert_eq!(ft.measure(), left.measure().plus(&right.measure()));
@@ -132,7 +137,7 @@ fn concat() {
 
 #[test]
 fn split() {
-    let ft: FingerTree<_> = (0..TEST_SIZE).map(Size).collect();
+    let ft: FingerTree<RcRefs, _> = (0..TEST_SIZE).map(Size).collect();
     for split in 0..TEST_SIZE {
         let (left, right) = ft.split(|m| m.value > split);
         validate(&left);
@@ -145,7 +150,7 @@ fn split() {
 
 #[test]
 fn reversed() {
-    let ft: FingerTree<_> = (0..TEST_SIZE).map(Size).collect();
+    let ft: FingerTree<RcRefs, _> = (0..TEST_SIZE).map(Size).collect();
     assert_eq!(
         ft.iter().rev().collect::<Vec<_>>(),
         (0..TEST_SIZE)
@@ -153,4 +158,13 @@ fn reversed() {
             .rev()
             .collect::<Vec<_>>()
     );
+}
+
+#[test]
+fn sync_send() {
+    fn is_sync<T: Sync>() {}
+    fn is_send<T: Send>() {}
+
+    is_sync::<SyncFingerTree<Size<i32>>>();
+    is_send::<SyncFingerTree<Size<i32>>>();
 }
