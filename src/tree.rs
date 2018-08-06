@@ -24,22 +24,6 @@ where
     },
 }
 
-// impl<R, V> Measured for FingerTreeInner<R, V>
-// where
-//     R: Refs<V>,
-//     V: Measured,
-// {
-//     type Measure = V::Measure;
-
-//     fn measure(&self) -> Self::Measure {
-//         match self {
-//             Empty => Self::Measure::zero(),
-//             Single(node) => node.measure(),
-//             Deep { measure, .. } => measure.clone(),
-//         }
-//     }
-// }
-
 pub struct FingerTreeRec<R, V>
 where
     R: Refs<V>,
