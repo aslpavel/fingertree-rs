@@ -3,7 +3,7 @@ use std::ops::Deref;
 
 use monoid::{Monoid, Sum};
 
-pub trait Measured {
+pub trait Measured: Clone {
     type Measure: Monoid + Clone;
 
     fn measure(&self) -> Self::Measure;
@@ -21,7 +21,7 @@ pub trait Measured {
 //     }
 // }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Size<T>(pub T);
 
 impl<T> fmt::Debug for Size<T>
@@ -33,7 +33,10 @@ where
     }
 }
 
-impl<T> Measured for Size<T> {
+impl<T> Measured for Size<T>
+where
+    T: Clone,
+{
     type Measure = Sum<usize>;
 
     fn measure(&self) -> Self::Measure {

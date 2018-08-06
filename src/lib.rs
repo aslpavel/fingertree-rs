@@ -4,11 +4,12 @@
 //
 // TODO:
 //  - improve lifting values to nodes in `.concat`
-//  - docs
-//  - tests, and maybe quickcheck tests?
-//  - Arc implementation?
+//  - docs, also value must be cheaply copyable
 //  - use more references in function signatures and call clone in the body of functions
 //  - lazy spine?
+
+#[cfg(test)]
+extern crate quickcheck;
 
 mod digit;
 pub mod measure;

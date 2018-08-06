@@ -6,7 +6,10 @@ use measure::Measured;
 use node::NodeInner;
 use tree::FingerTreeInner;
 
-pub trait Ref: Clone + Deref {
+pub trait Ref: Clone + Deref
+where
+    Self::Target: Sized,
+{
     fn new(value: Self::Target) -> Self;
 }
 
@@ -26,7 +29,6 @@ pub trait Refs<V>: Sized
 where
     V: Measured,
 {
-    type Value: Ref<Target = V>;
     type Node: Ref<Target = NodeInner<Self, V>>;
     type Tree: Ref<Target = FingerTreeInner<Self, V>>;
 }
@@ -37,7 +39,6 @@ impl<V> Refs<V> for RcRefs
 where
     V: Measured,
 {
-    type Value = Rc<V>;
     type Node = Rc<NodeInner<Self, V>>;
     type Tree = Rc<FingerTreeInner<Self, V>>;
 }
@@ -48,7 +49,6 @@ impl<V> Refs<V> for ArcRefs
 where
     V: Measured,
 {
-    type Value = Arc<V>;
     type Node = Arc<NodeInner<Self, V>>;
     type Tree = Arc<FingerTreeInner<Self, V>>;
 }

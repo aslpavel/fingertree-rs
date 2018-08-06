@@ -9,7 +9,7 @@ where
     R: Refs<V>,
     V: Measured,
 {
-    Leaf(R::Value),
+    Leaf(V),
     Node2 {
         measure: V::Measure,
         left: Node<R, V>,
@@ -36,7 +36,7 @@ where
     R: Refs<V>,
     V: Measured,
 {
-    pub(crate) fn leaf(value: R::Value) -> Self {
+    pub(crate) fn leaf(value: V) -> Self {
         Node {
             inner: R::Node::new(NodeInner::Leaf(value)),
         }

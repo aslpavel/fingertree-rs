@@ -24,21 +24,21 @@ where
     },
 }
 
-impl<R, V> Measured for FingerTreeInner<R, V>
-where
-    R: Refs<V>,
-    V: Measured,
-{
-    type Measure = V::Measure;
+// impl<R, V> Measured for FingerTreeInner<R, V>
+// where
+//     R: Refs<V>,
+//     V: Measured,
+// {
+//     type Measure = V::Measure;
 
-    fn measure(&self) -> Self::Measure {
-        match self {
-            Empty => Self::Measure::zero(),
-            Single(node) => node.measure(),
-            Deep { measure, .. } => measure.clone(),
-        }
-    }
-}
+//     fn measure(&self) -> Self::Measure {
+//         match self {
+//             Empty => Self::Measure::zero(),
+//             Single(node) => node.measure(),
+//             Deep { measure, .. } => measure.clone(),
+//         }
+//     }
+// }
 
 pub struct FingerTreeRec<R, V>
 where
@@ -56,7 +56,11 @@ where
     type Measure = V::Measure;
 
     fn measure(&self) -> Self::Measure {
-        self.inner.measure()
+        match *self.inner {
+            Empty => Self::Measure::zero(),
+            Single(ref node) => node.measure(),
+            Deep { ref measure, .. } => measure.clone(),
+        }
     }
 }
 
@@ -90,10 +94,7 @@ where
     }
 
     fn deep(left: Digit<Node<R, V>>, spine: FingerTreeRec<R, V>, right: Digit<Node<R, V>>) -> Self {
-        let measure = left
-            .measure()
-            .plus(&spine.inner.measure())
-            .plus(&right.measure());
+        let measure = left.measure().plus(&spine.measure()).plus(&right.measure());
         FingerTreeRec {
             inner: R::Tree::new(FingerTreeInner::Deep {
                 measure,
@@ -393,17 +394,17 @@ where
 
     pub fn push_left(&self, value: V) -> Self {
         FingerTree {
-            rec: self.rec.push_left(Node::leaf(R::Value::new(value))),
+            rec: self.rec.push_left(Node::leaf(value)),
         }
     }
 
     pub fn push_right(&self, value: V) -> Self {
         FingerTree {
-            rec: self.rec.push_right(Node::leaf(R::Value::new(value))),
+            rec: self.rec.push_right(Node::leaf(value)),
         }
     }
 
-    pub fn view_left(&self) -> Option<(R::Value, Self)> {
+    pub fn view_left(&self) -> Option<(V, Self)> {
         let (head, tail) = self.rec.view_left()?;
         match head.deref() {
             NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
@@ -411,7 +412,7 @@ where
         }
     }
 
-    pub fn view_right(&self) -> Option<(R::Value, Self)> {
+    pub fn view_right(&self) -> Option<(V, Self)> {
         let (head, tail) = self.rec.view_right()?;
         match head.deref() {
             NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
@@ -476,8 +477,7 @@ where
 impl<R, V> PartialEq for FingerTree<R, V>
 where
     R: Refs<V>,
-    R::Value: PartialEq,
-    V: Measured,
+    V: Measured + PartialEq,
 {
     fn eq(&self, other: &FingerTree<R, V>) -> bool {
         self.iter().zip(other).all(|(a, b)| a == b)
@@ -487,8 +487,7 @@ where
 impl<R, V> Eq for FingerTree<R, V>
 where
     R: Refs<V>,
-    R::Value: Eq,
-    V: Measured,
+    V: Measured + Eq,
 {
 }
 
@@ -505,7 +504,7 @@ where
     R: Refs<V>,
     V: Measured,
 {
-    type Item = R::Value;
+    type Item = V;
 
     fn next(&mut self) -> Option<Self::Item> {
         let (head, tail) = self.tail.view_left()?;
@@ -531,7 +530,7 @@ where
     R: Refs<V>,
     V: Measured,
 {
-    type Item = R::Value;
+    type Item = V;
     type IntoIter = FingerTreeIter<R, V>;
     fn into_iter(self) -> Self::IntoIter {
         FingerTreeIter { tail: self.clone() }
@@ -543,7 +542,7 @@ where
     R: Refs<V>,
     V: Measured,
 {
-    type Item = R::Value;
+    type Item = V;
     type IntoIter = FingerTreeIter<R, V>;
     fn into_iter(self) -> Self::IntoIter {
         (&self).into_iter()
@@ -564,8 +563,7 @@ where
 impl<R, V> fmt::Debug for FingerTree<R, V>
 where
     R: Refs<V>,
-    R::Value: fmt::Debug,
-    V: Measured,
+    V: Measured + fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "FingerTree")?;
