@@ -9,6 +9,7 @@
 //  - lazy spine?
 
 #[cfg(test)]
+#[macro_use]
 extern crate quickcheck;
 
 mod digit;
