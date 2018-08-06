@@ -34,15 +34,15 @@ where
 
 quickcheck! {
     fn split_and_concat(ft: FingerTree<Size<i32>>, index: usize) -> bool {
-        let len = ft.measure().value;
+        let len = *ft.measure();
         let index = if len != 0 { index % len } else { 0 };
         let (left, right) = ft.split(|m| m.value > index);
         validate(&left);
         validate(&right);
         true
             // correct split
-            && left.measure().value == index
-            && right.measure().value == len - index
+            && *left.measure() == index
+            && *right.measure() == len - index
             // concat is inverse to split
             && left.concat(&right) == ft
     }

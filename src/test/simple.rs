@@ -10,14 +10,14 @@ const TEST_SIZE: usize = 512;
 fn queue() {
     let ft: RcFingerTree<_> = (0..TEST_SIZE).map(Size).collect();
     validate(&ft);
-    assert_eq!(ft.measure().value, TEST_SIZE);
+    assert_eq!(*ft.measure(), TEST_SIZE);
 
     let mut count = 0;
     for (value, expected) in ft.iter().zip(0..) {
         assert_eq!(*value, expected);
         count += 1;
     }
-    assert_eq!(ft.measure().value, count);
+    assert_eq!(*ft.measure(), count);
 }
 
 #[test]
@@ -45,8 +45,8 @@ fn split() {
         let (left, right) = ft.split(|m| m.value > split);
         validate(&left);
         validate(&right);
-        assert_eq!(left.measure().value, split);
-        assert_eq!(right.measure().value, TEST_SIZE - split);
+        assert_eq!(*left.measure(), split);
+        assert_eq!(*right.measure(), TEST_SIZE - split);
         assert_eq!(ft, &left + &right);
     }
 }

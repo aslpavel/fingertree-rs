@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::ops::{Add, Deref};
 
 /// Every monoid implementation should satisfy following laws
 ///   **associativity**: `a + (b + c) == (a + b) + c`
@@ -46,5 +46,12 @@ where
 
     fn plus(&self, other: &Self) -> Self {
         Sum::new(&self.value + &other.value)
+    }
+}
+
+impl<T> Deref for Sum<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.value
     }
 }
