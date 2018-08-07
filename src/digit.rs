@@ -1,4 +1,4 @@
-use std::ops::{Add, Deref};
+use std::ops::Add;
 
 use measure::Measured;
 use monoid::Monoid;
@@ -107,7 +107,7 @@ where
     V: Measured,
 {
     fn from(node: &'a Node<R, V>) -> Digit<Node<R, V>> {
-        match &node.deref() {
+        match node.as_ref() {
             NodeInner::Leaf(..) => Digit::One([node.clone()]),
             NodeInner::Node2 { left, right, .. } => Digit::Two([left.clone(), right.clone()]),
             NodeInner::Node3 {

@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use measure::Measured;
 use monoid::Monoid;
 use reference::{Ref, Refs};
@@ -89,21 +87,20 @@ where
     type Measure = V::Measure;
 
     fn measure(&self) -> Self::Measure {
-        match **self {
-            NodeInner::Leaf(ref value) => value.measure(),
-            NodeInner::Node2 { ref measure, .. } => measure.clone(),
-            NodeInner::Node3 { ref measure, .. } => measure.clone(),
+        match self.as_ref() {
+            NodeInner::Leaf(value) => value.measure(),
+            NodeInner::Node2 { measure, .. } => measure.clone(),
+            NodeInner::Node3 { measure, .. } => measure.clone(),
         }
     }
 }
 
-impl<R, V> Deref for Node<R, V>
+impl<R, V> AsRef<NodeInner<R, V>> for Node<R, V>
 where
     R: Refs<V>,
     V: Measured,
 {
-    type Target = NodeInner<R, V>;
-    fn deref(&self) -> &Self::Target {
-        self.inner.deref()
+    fn as_ref(&self) -> &NodeInner<R, V> {
+        &*self.inner
     }
 }

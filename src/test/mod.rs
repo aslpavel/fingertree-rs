@@ -26,12 +26,12 @@ where
         V::Measure: Eq + PartialEq + fmt::Debug,
     {
         if depth == 0 {
-            match **node {
+            match node.as_ref() {
                 NodeInner::Leaf(..) => (),
                 _ => panic!("all zero depth nodes must be leafs"),
             }
         } else {
-            match **node {
+            match node.as_ref() {
                 NodeInner::Leaf(..) => panic!("leaf node with depth: {}", depth),
                 NodeInner::Node2 {
                     ref left,
@@ -67,7 +67,7 @@ where
         V: Measured,
         V::Measure: Eq + PartialEq + fmt::Debug,
     {
-        match *ft.inner {
+        match ft.as_ref() {
             FingerTreeInner::Empty => (),
             FingerTreeInner::Single(ref node) => validate_node_rec(depth, node),
             FingerTreeInner::Deep {

@@ -1,6 +1,6 @@
 use std::fmt;
 use std::iter::FromIterator;
-use std::ops::{Add, Deref};
+use std::ops::Add;
 
 use self::FingerTreeInner::{Deep, Empty, Single};
 use digit::Digit;
@@ -29,7 +29,17 @@ where
     R: Refs<V>,
     V: Measured,
 {
-    pub(crate) inner: R::Tree,
+    inner: R::Tree,
+}
+
+impl<R, V> AsRef<FingerTreeInner<R, V>> for FingerTreeRec<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    fn as_ref(&self) -> &FingerTreeInner<R, V> {
+        &self.inner
+    }
 }
 
 impl<R, V> Measured for FingerTreeRec<R, V>
@@ -40,10 +50,10 @@ where
     type Measure = V::Measure;
 
     fn measure(&self) -> Self::Measure {
-        match *self.inner {
+        match self.as_ref() {
             Empty => Self::Measure::zero(),
-            Single(ref node) => node.measure(),
-            Deep { ref measure, .. } => measure.clone(),
+            Single(node) => node.measure(),
+            Deep { measure, .. } => measure.clone(),
         }
     }
 }
@@ -90,7 +100,7 @@ where
     }
 
     fn push_left(&self, value: Node<R, V>) -> Self {
-        match self.inner.deref() {
+        match self.as_ref() {
             Empty => Self::single(value),
             Single(other) => Self::deep(
                 Digit::One([value]),
@@ -114,7 +124,7 @@ where
     }
 
     fn push_right(&self, value: Node<R, V>) -> Self {
-        match self.inner.deref() {
+        match self.as_ref() {
             Empty => Self::single(value),
             Single(other) => Self::deep(
                 Digit::One([other.clone()]),
@@ -155,7 +165,7 @@ where
     }
 
     fn view_left(&self) -> Option<(Node<R, V>, Self)> {
-        match self.inner.deref() {
+        match self.as_ref() {
             Empty => None,
             Single(value) => Some((value.clone(), FingerTreeRec::empty())),
             Deep {
@@ -183,7 +193,7 @@ where
     }
 
     fn view_right(&self) -> Option<(Node<R, V>, Self)> {
-        match self.inner.deref() {
+        match self.as_ref() {
             Empty => None,
             Single(value) => Some((value.clone(), FingerTreeRec::empty())),
             Deep {
@@ -203,7 +213,7 @@ where
     where
         F: FnMut(&V::Measure) -> bool,
     {
-        match self.inner.deref() {
+        match self.as_ref() {
             Empty => panic!("recursive split of finger-tree called on empty tree"),
             Single(value) => (
                 FingerTreeRec::empty(),
@@ -247,7 +257,7 @@ where
     }
 
     fn concat(left: &Self, mid: &[Node<R, V>], right: &Self) -> Self {
-        match (left.inner.deref(), right.inner.deref()) {
+        match (left.as_ref(), right.as_ref()) {
             (Empty, _) => mid
                 .iter()
                 .rfold(right.clone(), |ft, item| ft.push_left(item.clone())),
@@ -297,7 +307,7 @@ where
                             count -= 1;
                             // this cannot be empty as left and right digit contain
                             // at least one element each.
-                            match *nodes.pop().expect("concat variant violated") {
+                            match nodes.pop().expect("concat invariant violated").as_ref() {
                                 NodeInner::Node3 {
                                     left: ref v0,
                                     middle: ref v1,
@@ -370,7 +380,7 @@ where
     }
 
     pub fn is_empty(&self) -> bool {
-        match *self.rec.inner {
+        match self.rec.as_ref() {
             FingerTreeInner::Empty => true,
             _ => false,
         }
@@ -390,7 +400,7 @@ where
 
     pub fn view_left(&self) -> Option<(V, Self)> {
         let (head, tail) = self.rec.view_left()?;
-        match head.deref() {
+        match head.as_ref() {
             NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
             _ => panic!("not leaf returned from to level finger-tree"),
         }
@@ -398,7 +408,7 @@ where
 
     pub fn view_right(&self) -> Option<(V, Self)> {
         let (head, tail) = self.rec.view_right()?;
-        match head.deref() {
+        match head.as_ref() {
             NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
             _ => panic!("not leaf returned from to level finger-tree"),
         }
