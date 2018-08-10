@@ -13,18 +13,6 @@ where
     fn new(value: Self::Target) -> Self;
 }
 
-impl<T> Ref for Rc<T> {
-    fn new(value: T) -> Self {
-        Rc::new(value)
-    }
-}
-
-impl<T> Ref for Arc<T> {
-    fn new(value: T) -> Self {
-        Arc::new(value)
-    }
-}
-
 pub trait Refs<V>: Sized
 where
     V: Measured,
@@ -33,22 +21,25 @@ where
     type Tree: Ref<Target = FingerTreeInner<Self, V>>;
 }
 
-pub enum RcRefs {}
+macro_rules! define_refs {
+    ($ref:ident, $refs:ident) => {
+        impl<T> $crate::reference::Ref for $ref<T> {
+            fn new(value: T) -> Self {
+                $ref::new(value)
+            }
+        }
 
-impl<V> Refs<V> for RcRefs
-where
-    V: Measured,
-{
-    type Node = Rc<NodeInner<Self, V>>;
-    type Tree = Rc<FingerTreeInner<Self, V>>;
+        pub enum $refs {}
+
+        impl<V> $crate::reference::Refs<V> for $refs
+        where
+            V: $crate::measure::Measured,
+        {
+            type Node = $ref<$crate::node::NodeInner<Self, V>>;
+            type Tree = $ref<$crate::tree::FingerTreeInner<Self, V>>;
+        }
+    };
 }
 
-pub enum ArcRefs {}
-
-impl<V> Refs<V> for ArcRefs
-where
-    V: Measured,
-{
-    type Node = Arc<NodeInner<Self, V>>;
-    type Tree = Arc<FingerTreeInner<Self, V>>;
-}
+define_refs!(Rc, RcRefs);
+define_refs!(Arc, ArcRefs);
