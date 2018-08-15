@@ -348,6 +348,12 @@ where
     }
 }
 
+/// FingerTree is parametrized by two type parpameters
+///   - `R` - type family trick which determines type of references used in
+///           implementation. This crate implementes [`ArcRefs`](::reference::ArcRefs) which is based
+///           on `Arc` atomic reference counter, and [`RcRefs`] which is based
+///           on `Rc`.
+///   - `V` - value type which must be measurable and cheaply clonable.
 pub struct FingerTree<R, V>
 where
     R: Refs<V>,
@@ -373,12 +379,18 @@ where
     R: Refs<V>,
     V: Measured,
 {
+    /// Constructs a new, empty `FingerTree`
+    ///
+    /// Complexity: `O(1)`
     pub fn new() -> Self {
         FingerTree {
             rec: FingerTreeRec::empty(),
         }
     }
 
+    /// Returns `true` if finger tree is empty
+    ///
+    /// Complexity: `O(1)`
     pub fn is_empty(&self) -> bool {
         match self.rec.as_ref() {
             FingerTreeInner::Empty => true,
@@ -386,18 +398,29 @@ where
         }
     }
 
+    /// Creates new tree with value prepended to the left side of the tree
+    ///
+    /// Amortized complexity: `O(1)`
     pub fn push_left(&self, value: V) -> Self {
         FingerTree {
             rec: self.rec.push_left(Node::leaf(value)),
         }
     }
 
+    /// Creates new tree with value prepended to the right side of the tree
+    ///
+    /// Amortized complexity: `O(1)`
     pub fn push_right(&self, value: V) -> Self {
         FingerTree {
             rec: self.rec.push_right(Node::leaf(value)),
         }
     }
 
+    /// Destrutures tree into a tuple with first element of it containing first
+    /// element from the left side of the tree, and second element contains tree
+    /// with reset of the elements
+    ///
+    /// Amortized complexity: `O(1)`
     pub fn view_left(&self) -> Option<(V, Self)> {
         let (head, tail) = self.rec.view_left()?;
         match head.as_ref() {
@@ -406,6 +429,11 @@ where
         }
     }
 
+    /// Destrutures tree into a tuple with first element of it containing first
+    /// element from the left side of the tree, and second element contains tree
+    /// with reset of the elements
+    ///
+    /// Amortized complexity: `O(1)`
     pub fn view_right(&self) -> Option<(V, Self)> {
         let (head, tail) = self.rec.view_right()?;
         match head.as_ref() {
@@ -414,6 +442,16 @@ where
         }
     }
 
+    /// Destructures tree into two three, using provided predicate.
+    ///
+    /// Predicate must be monotinic function accepting accumulated measure of elments
+    /// and changing its value from `true` to `false`. This function basically behave
+    /// as if we would iterate all elements from left to right, and accumlating measure
+    /// of all iterated elements, calling predicate on this accumulated value and once
+    /// its value flips from `true` to `false` we stop iteration and form two threes
+    /// from already iterated elements and the rest of the elements.
+    ///
+    /// Complexity: `O(ln(N))`
     pub fn split<F>(&self, mut pred: F) -> (FingerTree<R, V>, FingerTree<R, V>)
     where
         F: FnMut(&V::Measure) -> bool,
@@ -433,12 +471,16 @@ where
         }
     }
 
+    /// Construct new finger tree wich is concatination of `self` and `other`
+    ///
+    /// Complexity: `O(N)`
     pub fn concat(&self, other: &Self) -> Self {
         FingerTree {
             rec: FingerTreeRec::concat(&self.rec, &[], &other.rec),
         }
     }
 
+    /// Double ended iterator visiting all elements of the tree from left to right
     pub fn iter(&self) -> FingerTreeIter<R, V> {
         FingerTreeIter { tail: self.clone() }
     }
@@ -465,6 +507,18 @@ where
 
     fn add(self, other: &'b FingerTree<R, V>) -> Self::Output {
         self.concat(other)
+    }
+}
+
+impl<R, V> Add<FingerTree<R, V>> for FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    type Output = FingerTree<R, V>;
+
+    fn add(self, other: Self) -> Self::Output {
+        self.concat(&other)
     }
 }
 

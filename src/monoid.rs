@@ -1,10 +1,20 @@
+//! `Monoid` trait and implementations
 use std::ops::{Add, Deref};
 
-/// Every monoid implementation should satisfy following laws
-///   **associativity**: `a + (b + c) == (a + b) + c`
-///   **identity element**: `zero + a == a + zero == a`
+/// Monoid definition
+///
+/// Monoid is a tuple of `(S, O, I)` where:
+///   - `S` - set of elements
+///   - `O` - binary operation on S `S x S -> S`, here called `plus`
+///   - `I` - identity element of this monoid, here called `zero`
+///
+/// Every monoid implementation should satisfy following laws:
+///  - **associativity**: `a + (b + c) == (a + b) + c`
+///  -  **identity element**: `zero + a == a + zero == a`
 pub trait Monoid {
+    /// `zero` or `identity` elemnt of monoid
     fn zero() -> Self;
+    /// `plus` operation of `Monoid`
     fn plus(&self, other: &Self) -> Self;
 }
 
@@ -22,14 +32,15 @@ pub trait Monoid {
 //     }
 // }
 
-/// Newtype wrapper that implements `Monoid` for any type that implements
-/// `Add` and `Default` value.
+/// Monoid formed by `Add::add` operation and `Default::default()` identity element
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Sum<T> {
+    /// New type wrapped value
     pub value: T,
 }
 
 impl<T> Sum<T> {
+    /// Create `Sum` monoid from any value
     pub fn new(value: T) -> Self {
         Sum { value }
     }
