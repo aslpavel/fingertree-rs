@@ -36,7 +36,7 @@ quickcheck! {
     fn split_and_concat(ft: FingerTree<Size<i32>>, index: usize) -> bool {
         let len = *ft.measure();
         let index = if len != 0 { index % len } else { 0 };
-        let (left, right) = ft.split(|m| m.value > index);
+        let (left, right) = ft.split(|m| **m > index);
         validate(&left);
         validate(&right);
         true

@@ -1,4 +1,4 @@
-//! `Measured` trait and definations
+//! [`Measured`](measure/trait.Measured.html) trait and implementations
 use std::fmt;
 use std::ops::Deref;
 
@@ -49,12 +49,13 @@ where
     type Measure = Sum<usize>;
 
     fn measure(&self) -> Self::Measure {
-        Sum::new(1)
+        Sum(1)
     }
 }
 
 impl<T> Deref for Size<T> {
     type Target = T;
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }

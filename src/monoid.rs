@@ -1,4 +1,4 @@
-//! `Monoid` trait and implementations
+//! [`Monoid`](monoid/trait.Monoid.html) trait and implementations
 use std::ops::{Add, Deref};
 
 /// Monoid definition
@@ -12,7 +12,7 @@ use std::ops::{Add, Deref};
 ///  - **associativity**: `a + (b + c) == (a + b) + c`
 ///  -  **identity element**: `zero + a == a + zero == a`
 pub trait Monoid {
-    /// `zero` or `identity` elemnt of monoid
+    /// `zero` or `identity` element of monoid
     fn zero() -> Self;
     /// `plus` operation of `Monoid`
     fn plus(&self, other: &Self) -> Self;
@@ -33,18 +33,8 @@ pub trait Monoid {
 // }
 
 /// Monoid formed by `Add::add` operation and `Default::default()` identity element
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Sum<T> {
-    /// New type wrapped value
-    pub value: T,
-}
-
-impl<T> Sum<T> {
-    /// Create `Sum` monoid from any value
-    pub fn new(value: T) -> Self {
-        Sum { value }
-    }
-}
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub struct Sum<T>(pub T);
 
 impl<T> Monoid for Sum<T>
 where
@@ -52,17 +42,19 @@ where
     T: Default,
 {
     fn zero() -> Self {
-        Sum::new(T::default())
+        Sum(T::default())
     }
 
     fn plus(&self, other: &Self) -> Self {
-        Sum::new(&self.value + &other.value)
+        Sum(&self.0 + &other.0)
     }
 }
 
 impl<T> Deref for Sum<T> {
     type Target = T;
+
+    #[inline]
     fn deref(&self) -> &Self::Target {
-        &self.value
+        &self.0
     }
 }

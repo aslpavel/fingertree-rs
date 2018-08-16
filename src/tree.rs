@@ -9,13 +9,17 @@ use monoid::Monoid;
 use node::{Node, NodeInner};
 use reference::{Ref, Refs};
 
+/// Only visible to defne custom [`Refs`](trait.Refs.html)
 pub enum FingerTreeInner<R, V>
 where
     R: Refs<V>,
     V: Measured,
 {
+    #[doc(hidden)]
     Empty,
+    #[doc(hidden)]
     Single(Node<R, V>),
+    #[doc(hidden)]
     Deep {
         measure: V::Measure,
         left: Digit<Node<R, V>>,
@@ -348,10 +352,12 @@ where
     }
 }
 
+/// FingerTree implemenetation
+///
 /// FingerTree is parametrized by two type parpameters
 ///   - `R` - type family trick which determines type of references used in
-///           implementation. This crate implementes [`ArcRefs`](::reference::ArcRefs) which is based
-///           on `Arc` atomic reference counter, and [`RcRefs`] which is based
+///           implementation. This crate implementes [`ArcRefs`](enum.ArcRefs.html) which is based
+///           on `Arc` atomic reference counter, and [`RcRefs`](enum.RcRefs.html) which is based
 ///           on `Rc`.
 ///   - `V` - value type which must be measurable and cheaply clonable.
 pub struct FingerTree<R, V>

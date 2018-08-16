@@ -2,17 +2,21 @@ use measure::Measured;
 use monoid::Monoid;
 use reference::{Ref, Refs};
 
+/// Only visible to defne custom [`Refs`](trait.Refs.html)
 pub enum NodeInner<R, V>
 where
     R: Refs<V>,
     V: Measured,
 {
+    #[doc(hidden)]
     Leaf(V),
+    #[doc(hidden)]
     Node2 {
         measure: V::Measure,
         left: Node<R, V>,
         right: Node<R, V>,
     },
+    #[doc(hidden)]
     Node3 {
         measure: V::Measure,
         left: Node<R, V>,

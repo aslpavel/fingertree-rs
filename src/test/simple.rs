@@ -42,7 +42,7 @@ fn concat() {
 fn split() {
     let ft: RcFingerTree<_> = (0..TEST_SIZE).map(Size).collect();
     for split in 0..TEST_SIZE {
-        let (left, right) = ft.split(|m| m.value > split);
+        let (left, right) = ft.split(|m| **m > split);
         validate(&left);
         validate(&right);
         assert_eq!(*left.measure(), split);

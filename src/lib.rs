@@ -5,9 +5,9 @@
 //! Finger trees is a functional representation of persistent sequences
 //! supporting access to the ends in amortized constant time, and concatenation
 //! and splitting in time logarithmic in the size of the smaller piece. It also
-//! has `split` operation defined in general form, which can be used to implement
-//! sequence, priority queue, search tree, priority search queue and more
-//! datastructures.
+//! has [`split`](struct.FingerTree.html#method.split) operation defined in general
+//! form, which can be used to implement sequence, priority queue, search tree,
+//! priority search queue and more datastructures.
 //!
 //! ## Links:
 //!  - Original paper: [Finger Trees: A Simple General-purpose Data Structure](http://www.staff.city.ac.uk/~ross/papers/FingerTree.html)
@@ -15,7 +15,7 @@
 //!
 //! ## Notes:
 //!  - This implementation does not use non-regular recursive types as implementation
-//!    described in a paper. As rust's monomorphization does not play well with such types.
+//!    described in the paper. As rust's monomorphization does not play well with such types.
 //!  - Implmentation abstracts over reference counted types `Rc/Arc`. Using type family trick.
 //!  - Uses strict spine in implementation.
 //!  - Iterator returns cloned value, and in general this implementation assumes that value
@@ -24,22 +24,24 @@
 //!
 //! ## Examples:
 //! ```
+//! # extern crate fingertree;
 //! # use std::iter::FromIterator;
 //! use fingertree::measure::Size;
 //! use fingertree::monoid::Sum;
 //! use fingertree::{FingerTree, Measured, RcRefs};
 //!
-//! // construct finger tree with `Size` measure
+//! // construct `Rc` based finger tree with `Size` measure
 //! let ft: FingerTree<RcRefs, _> = vec!["one", "two", "three", "four", "five"]
 //!     .into_iter()
 //!     .map(Size)
 //!     .collect();
+//! assert_eq!(ft.measure(), Sum(5));
 //!
 //! // split with predicate
-//! let (left, right) = ft.split(|m| m.value > 2);
-//! assert_eq!(left.measure(), Sum::new(2));
+//! let (left, right) = ft.split(|measure| *measure > Sum(2));
+//! assert_eq!(left.measure(), Sum(2));
 //! assert_eq!(Vec::from_iter(&left), vec![Size("one"), Size("two")]);
-//! assert_eq!(right.measure(), Sum::new(3));
+//! assert_eq!(right.measure(), Sum(3));
 //! assert_eq!(Vec::from_iter(&right), vec![Size("three"), Size("four"), Size("five")]);
 //!
 //! // concatinate
@@ -54,6 +56,7 @@
 //!          .collect(),
 //! );
 //! ```
+#![doc(test(no_crate_inject))]
 #![deny(missing_docs)]
 #![deny(warnings)]
 
@@ -73,8 +76,9 @@ mod test;
 
 pub use measure::Measured;
 pub use monoid::Monoid;
+pub use node::NodeInner;
 pub use reference::{ArcRefs, RcRefs, Ref, Refs};
-pub use tree::FingerTree;
+pub use tree::{FingerTree, FingerTreeInner};
 
 pub mod rc {
     //! `Rc` based implementation of `FingerTree`

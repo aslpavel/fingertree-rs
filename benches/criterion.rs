@@ -22,7 +22,7 @@ fn bench_split(c: &mut Criterion) {
     let ft: rc::FingerTree<_> = (0..1024).map(Size).collect();
     c.bench_function_over_inputs(
         "split",
-        move |b, &size| b.iter(|| ft.split(|m| m.value > *size)),
+        move |b, &size| b.iter(|| ft.split(|m| **m > *size)),
         SPLIT_1024,
     );
 }
@@ -31,7 +31,7 @@ fn bench_concat(c: &mut Criterion) {
     let ft: rc::FingerTree<_> = (0..1024).map(Size).collect();
     let ft_split: HashMap<_, _> = SPLIT_1024
         .iter()
-        .map(|size| (size, ft.split(|m| m.value > *size)))
+        .map(|size| (size, ft.split(|m| **m > *size)))
         .collect();
 
     c.bench_function_over_inputs(
@@ -52,7 +52,7 @@ fn bench_arc_vs_rc(c: &mut Criterion) {
         let (size, split) = i;
         let ft: FingerTree<R, _> = (0..*size).map(Size).collect();
         b.iter(|| {
-            let (left, right) = ft.split(|m| m.value > *split);
+            let (left, right) = ft.split(|m| **m > *split);
             left.concat(&right)
         })
     }
