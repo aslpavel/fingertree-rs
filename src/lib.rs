@@ -24,7 +24,6 @@
 //!
 //! ## Examples:
 //! ```
-//! # extern crate fingertree;
 //! # use std::iter::FromIterator;
 //! use fingertree::measure::Size;
 //! use fingertree::monoid::Sum;
@@ -56,7 +55,6 @@
 //!          .collect(),
 //! );
 //! ```
-#![doc(test(no_crate_inject))]
 #![deny(missing_docs)]
 #![deny(warnings)]
 
