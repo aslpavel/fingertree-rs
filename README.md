@@ -24,28 +24,28 @@ priority search queue and more datastructures.
 
 ## Examples:
 ```rust
-# use std::iter::FromIterator;
+use std::iter::FromIterator;
 use fingertree::measure::Size;
 use fingertree::monoid::Sum;
 use fingertree::{FingerTree, Measured, RcRefs};
-//!
+
 // construct `Rc` based finger tree with `Size` measure
 let ft: FingerTree<RcRefs, _> = vec!["one", "two", "three", "four", "five"]
     .into_iter()
     .map(Size)
     .collect();
 assert_eq!(ft.measure(), Sum(5));
-//!
+
 // split with predicate
 let (left, right) = ft.split(|measure| *measure > Sum(2));
 assert_eq!(left.measure(), Sum(2));
 assert_eq!(Vec::from_iter(&left), vec![Size("one"), Size("two")]);
 assert_eq!(right.measure(), Sum(3));
 assert_eq!(Vec::from_iter(&right), vec![Size("three"), Size("four"), Size("five")]);
-//!
+
 // concatinate
 assert_eq!(ft, left + right);
-//!
+
 // push values
 assert_eq!(
     ft.push_left(Size("left")).push_right(Size("right")),
