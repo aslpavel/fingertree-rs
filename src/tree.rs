@@ -479,7 +479,7 @@ where
 
     /// Construct new finger tree wich is concatination of `self` and `other`
     ///
-    /// Complexity: `O(N)`
+    /// Complexity: `O(ln(N))`
     pub fn concat(&self, other: &Self) -> Self {
         FingerTree {
             rec: FingerTreeRec::concat(&self.rec, &[], &other.rec),
