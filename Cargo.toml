@@ -2,6 +2,16 @@
 name = "fingertree"
 version = "0.1.0"
 authors = ["Pavel Aslanov <asl.pavel@gmail.com>"]
+description = "Immutable persisten finger trees"
+license-file = "LICENSE"
+readme = "README.md"
+repository = "https://github.com/aslpavel/fingertree-rs"
+categories = ["data-structures"]
+keywords = ["immutable", "persistent", "data-structures"]
+
+[badges]
+travis-ci = { repository = "aslpavel/fingertree-rs" }
+coveralls = { repository = "aslpavel/fingertree-rs" }
 
 [dependencies]
 
