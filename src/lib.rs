@@ -23,7 +23,7 @@
 //!    anything else.
 //!
 //! ## Examples:
-//! ```
+//! ```rust
 //! # use std::iter::FromIterator;
 //! use fingertree::measure::Size;
 //! use fingertree::monoid::Sum;
