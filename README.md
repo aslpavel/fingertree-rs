@@ -1,6 +1,9 @@
 # FingerTree
 [![Build Status](https://travis-ci.org/aslpavel/fingertree-rs.svg?branch=master)](https://travis-ci.org/aslpavel/fingertree-rs)
 [![Coverage Status](https://coveralls.io/repos/github/aslpavel/fingertree-rs/badge.svg?branch=master)](https://coveralls.io/github/aslpavel/fingertree-rs?branch=master)
+[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Crate](https://img.shields.io/crates/v/fingertrees.svg)](https://crates.io/crates/fingertrees)
+[![API Docs](https://docs.rs/fingertrees/badge.svg)](https://docs.rs/fingertrees)
 
 Finger trees is a functional representation of persistent sequences
 supporting access to the ends in amortized constant time, and concatenation
