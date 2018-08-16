@@ -1,10 +1,10 @@
 #[macro_use]
 extern crate criterion;
-extern crate fingertree;
+extern crate fingertrees;
 
 use criterion::{Bencher, Criterion, Fun};
-use fingertree::measure::Size;
-use fingertree::{rc, ArcRefs, FingerTree, RcRefs, Refs};
+use fingertrees::measure::Size;
+use fingertrees::{rc, ArcRefs, FingerTree, RcRefs, Refs};
 use std::collections::HashMap;
 
 const KB: usize = 1024;

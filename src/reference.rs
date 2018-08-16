@@ -35,12 +35,12 @@ impl<T> Ref for Arc<T> {
 /// # Example:
 /// ```
 /// #[macro_use]
-/// extern crate fingertree;
+/// extern crate fingertrees;
 ///
 /// use std::rc::Rc;
 /// use std::ops::Deref;
-/// use fingertree::measure::Size;
-/// use fingertree::{FingerTree, Measured, Ref};
+/// use fingertrees::measure::Size;
+/// use fingertrees::{FingerTree, Measured, Ref};
 ///
 /// // your custom reference type
 /// struct MyRef<T>(Rc<T>);

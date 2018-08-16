@@ -25,9 +25,9 @@
 //! ## Examples:
 //! ```rust
 //! # use std::iter::FromIterator;
-//! use fingertree::measure::Size;
-//! use fingertree::monoid::Sum;
-//! use fingertree::{FingerTree, Measured, RcRefs};
+//! use fingertrees::measure::Size;
+//! use fingertrees::monoid::Sum;
+//! use fingertrees::{FingerTree, Measured, RcRefs};
 //!
 //! // construct `Rc` based finger tree with `Size` measure
 //! let ft: FingerTree<RcRefs, _> = vec!["one", "two", "three", "four", "five"]
