@@ -58,8 +58,7 @@ impl<T> Ref for Arc<T> {
 ///     }
 /// }
 ///
-/// impl<T> Ref for MyRef<T>
-/// {
+/// impl<T> Ref for MyRef<T> {
 ///     fn new(value: T) -> Self {
 ///         MyRef(Rc::new(value))
 ///     }

@@ -1,10 +1,4 @@
 language: rust
-sudo: required
-dist: trusty
-addons:
-    apt:
-        packages:
-            - libssl-dev
 cache: cargo
 
 rust:
@@ -16,14 +10,13 @@ matrix:
   allow_failures:
     - rust: nightly
 
-script:
-- cargo clean
-- cargo build
-- cargo test
+sudo: required
+services:
+  - docker
 
 after_success: |
-  # submit coverage
+  # coverage
   if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then
-    RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin 
+    docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin \
     cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
   fi
