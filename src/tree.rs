@@ -1,5 +1,5 @@
 use std::fmt;
-use std::iter::FromIterator;
+use std::iter::{FromIterator, FusedIterator};
 use std::ops::Add;
 
 use self::FingerTreeInner::{Deep, Empty, Single};
@@ -565,6 +565,13 @@ where
         self.tail = tail;
         Some(head)
     }
+}
+
+impl<R, V> FusedIterator for FingerTreeIter<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
 }
 
 impl<R, V> DoubleEndedIterator for FingerTreeIter<R, V>
