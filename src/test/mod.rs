@@ -7,7 +7,7 @@ use measure::Measured;
 use monoid::Monoid;
 use node::{Node, NodeInner};
 use reference::Refs;
-use tree::{FingerTree, FingerTreeInner, FingerTreeRec};
+use tree::{FingerTree, Tree, TreeInner};
 
 // constraint that is dynamic in current implementation but static in
 // original algorithm due to the fact that rust does not support
@@ -61,16 +61,16 @@ where
             }
         }
     }
-    fn validate_ft_rec<R, V>(depth: usize, ft: &FingerTreeRec<R, V>)
+    fn validate_ft_rec<R, V>(depth: usize, ft: &Tree<R, V>)
     where
         R: Refs<V>,
         V: Measured,
         V::Measure: Eq + PartialEq + fmt::Debug,
     {
         match ft.as_ref() {
-            FingerTreeInner::Empty => (),
-            FingerTreeInner::Single(ref node) => validate_node_rec(depth, node),
-            FingerTreeInner::Deep {
+            TreeInner::Empty => (),
+            TreeInner::Single(ref node) => validate_node_rec(depth, node),
+            TreeInner::Deep {
                 ref left,
                 ref spine,
                 ref right,

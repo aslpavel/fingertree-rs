@@ -4,7 +4,7 @@ extern crate fingertrees;
 
 use criterion::{Bencher, Criterion, Fun};
 use fingertrees::measure::Size;
-use fingertrees::{rc, ArcRefs, FingerTree, RcRefs, Refs};
+use fingertrees::{rc, ArcRefs, FingerTree, Measured, RcRefs, Refs};
 use std::collections::HashMap;
 
 const KB: usize = 1024;
@@ -44,11 +44,53 @@ fn bench_concat(c: &mut Criterion) {
     );
 }
 
+/// Iterator based destructuring FingerTree with `view`
+struct ViewIter<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    tail: FingerTree<R, V>,
+}
+
+impl<R, V> ViewIter<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    fn new(tail: &FingerTree<R, V>) -> Self {
+        ViewIter { tail: tail.clone() }
+    }
+}
+
+impl<R, V> Iterator for ViewIter<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    type Item = V;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (head, tail) = self.tail.view_left()?;
+        self.tail = tail;
+        Some(head)
+    }
+}
+
 fn bench_iter(c: &mut Criterion) {
     let ft: rc::FingerTree<_> = (0..65536).map(Size).collect();
-    c.bench_function("iterator", move |b| {
-        b.iter(|| ft.iter().fold(0, |count, _| count + 1))
-    });
+    c.bench_functions(
+        "iterator",
+        vec![
+            Fun::new("stack", |b, ft: &rc::FingerTree<Size<i64>>| {
+                b.iter(|| ft.iter().fold(0, |count, _| count + 1))
+            }),
+            Fun::new("view", |b, ft: &rc::FingerTree<Size<i64>>| {
+                b.iter(|| ViewIter::new(ft).fold(0, |count, _| count + 1))
+            }),
+        ],
+        ft,
+    );
 }
 
 fn bench_arc_vs_rc(c: &mut Criterion) {

@@ -1,8 +1,9 @@
+use std::collections::VecDeque;
 use std::fmt;
 use std::iter::{FromIterator, FusedIterator};
 use std::ops::Add;
 
-use self::FingerTreeInner::{Deep, Empty, Single};
+use self::TreeInner::{Deep, Empty, Single};
 use digit::Digit;
 use measure::Measured;
 use monoid::Monoid;
@@ -10,7 +11,7 @@ use node::{Node, NodeInner};
 use reference::{Ref, Refs};
 
 /// Only visible to defne custom [`Refs`](trait.Refs.html)
-pub enum FingerTreeInner<R, V>
+pub enum TreeInner<R, V>
 where
     R: Refs<V>,
     V: Measured,
@@ -23,12 +24,12 @@ where
     Deep {
         measure: V::Measure,
         left: Digit<Node<R, V>>,
-        spine: FingerTreeRec<R, V>, //TODO: lazy spine
+        spine: Tree<R, V>, //TODO: lazy spine
         right: Digit<Node<R, V>>,
     },
 }
 
-pub struct FingerTreeRec<R, V>
+pub struct Tree<R, V>
 where
     R: Refs<V>,
     V: Measured,
@@ -36,17 +37,17 @@ where
     inner: R::Tree,
 }
 
-impl<R, V> AsRef<FingerTreeInner<R, V>> for FingerTreeRec<R, V>
+impl<R, V> AsRef<TreeInner<R, V>> for Tree<R, V>
 where
     R: Refs<V>,
     V: Measured,
 {
-    fn as_ref(&self) -> &FingerTreeInner<R, V> {
+    fn as_ref(&self) -> &TreeInner<R, V> {
         &self.inner
     }
 }
 
-impl<R, V> Measured for FingerTreeRec<R, V>
+impl<R, V> Measured for Tree<R, V>
 where
     R: Refs<V>,
     V: Measured,
@@ -62,39 +63,39 @@ where
     }
 }
 
-impl<R, V> Clone for FingerTreeRec<R, V>
+impl<R, V> Clone for Tree<R, V>
 where
     R: Refs<V>,
     V: Measured,
 {
     fn clone(&self) -> Self {
-        FingerTreeRec {
+        Tree {
             inner: self.inner.clone(),
         }
     }
 }
 
-impl<R, V> FingerTreeRec<R, V>
+impl<R, V> Tree<R, V>
 where
     R: Refs<V>,
     V: Measured,
 {
     fn empty() -> Self {
-        FingerTreeRec {
-            inner: R::Tree::new(FingerTreeInner::Empty),
+        Tree {
+            inner: R::Tree::new(TreeInner::Empty),
         }
     }
 
     fn single(value: Node<R, V>) -> Self {
-        FingerTreeRec {
-            inner: R::Tree::new(FingerTreeInner::Single(value)),
+        Tree {
+            inner: R::Tree::new(TreeInner::Single(value)),
         }
     }
 
-    fn deep(left: Digit<Node<R, V>>, spine: FingerTreeRec<R, V>, right: Digit<Node<R, V>>) -> Self {
+    fn deep(left: Digit<Node<R, V>>, spine: Tree<R, V>, right: Digit<Node<R, V>>) -> Self {
         let measure = left.measure().plus(&spine.measure()).plus(&right.measure());
-        FingerTreeRec {
-            inner: R::Tree::new(FingerTreeInner::Deep {
+        Tree {
+            inner: R::Tree::new(TreeInner::Deep {
                 measure,
                 left,
                 spine,
@@ -153,15 +154,11 @@ where
 
     // left element is not `Digit` because `Digit` cannot be empty, but left in current
     // postion can be.
-    fn deep_left(
-        left: &[Node<R, V>],
-        spine: &FingerTreeRec<R, V>,
-        right: &Digit<Node<R, V>>,
-    ) -> Self {
+    fn deep_left(left: &[Node<R, V>], spine: &Tree<R, V>, right: &Digit<Node<R, V>>) -> Self {
         if left.is_empty() {
             match spine.view_left() {
                 Some((head, tail)) => Self::deep((&head).into(), tail, right.clone()),
-                None => FingerTreeRec::from(right),
+                None => Tree::from(right),
             }
         } else {
             Self::deep(left.into(), spine.clone(), right.clone())
@@ -171,7 +168,7 @@ where
     fn view_left(&self) -> Option<(Node<R, V>, Self)> {
         match self.as_ref() {
             Empty => None,
-            Single(value) => Some((value.clone(), FingerTreeRec::empty())),
+            Single(value) => Some((value.clone(), Tree::empty())),
             Deep {
                 left, spine, right, ..
             } => match left.as_ref().split_first() {
@@ -181,15 +178,11 @@ where
         }
     }
 
-    fn deep_right(
-        left: &Digit<Node<R, V>>,
-        spine: &FingerTreeRec<R, V>,
-        right: &[Node<R, V>],
-    ) -> Self {
+    fn deep_right(left: &Digit<Node<R, V>>, spine: &Tree<R, V>, right: &[Node<R, V>]) -> Self {
         if right.is_empty() {
             match spine.view_right() {
                 Some((head, tail)) => Self::deep(left.clone(), tail, (&head).into()),
-                None => FingerTreeRec::from(left),
+                None => Tree::from(left),
             }
         } else {
             Self::deep(left.clone(), spine.clone(), right.into())
@@ -199,7 +192,7 @@ where
     fn view_right(&self) -> Option<(Node<R, V>, Self)> {
         match self.as_ref() {
             Empty => None,
-            Single(value) => Some((value.clone(), FingerTreeRec::empty())),
+            Single(value) => Some((value.clone(), Tree::empty())),
             Deep {
                 left, spine, right, ..
             } => match right.as_ref().split_last() {
@@ -209,21 +202,13 @@ where
         }
     }
 
-    fn split<F>(
-        &self,
-        measure: &V::Measure,
-        pred: &mut F,
-    ) -> (FingerTreeRec<R, V>, Node<R, V>, FingerTreeRec<R, V>)
+    fn split<F>(&self, measure: &V::Measure, pred: &mut F) -> (Tree<R, V>, Node<R, V>, Tree<R, V>)
     where
         F: FnMut(&V::Measure) -> bool,
     {
         match self.as_ref() {
             Empty => panic!("recursive split of finger-tree called on empty tree"),
-            Single(value) => (
-                FingerTreeRec::empty(),
-                value.clone(),
-                FingerTreeRec::empty(),
-            ),
+            Single(value) => (Tree::empty(), value.clone(), Tree::empty()),
             Deep {
                 left, spine, right, ..
             } => {
@@ -231,11 +216,7 @@ where
                 let left_measure = measure.plus(&left.measure());
                 if pred(&left_measure) {
                     let (l, x, r) = left.split(measure, pred);
-                    return (
-                        FingerTreeRec::from(l),
-                        x.clone(),
-                        Self::deep_left(r, spine, right),
-                    );
+                    return (Tree::from(l), x.clone(), Self::deep_left(r, spine, right));
                 }
                 // spine
                 let spine_measure = left_measure.plus(&spine.measure());
@@ -251,11 +232,7 @@ where
                 }
                 // right
                 let (l, x, r) = right.split(&spine_measure, pred);
-                (
-                    Self::deep_right(left, spine, l),
-                    x.clone(),
-                    FingerTreeRec::from(r),
-                )
+                (Self::deep_right(left, spine, l), x.clone(), Tree::from(r))
             }
         }
     }
@@ -338,7 +315,7 @@ where
     }
 }
 
-impl<R, T, V> From<T> for FingerTreeRec<R, V>
+impl<R, T, V> From<T> for Tree<R, V>
 where
     R: Refs<V>,
     T: AsRef<[Node<R, V>]>,
@@ -348,7 +325,7 @@ where
         slice
             .as_ref()
             .iter()
-            .fold(FingerTreeRec::empty(), |ft, v| ft.push_right(v.clone()))
+            .fold(Tree::empty(), |ft, v| ft.push_right(v.clone()))
     }
 }
 
@@ -365,7 +342,7 @@ where
     R: Refs<V>,
     V: Measured,
 {
-    pub(crate) rec: FingerTreeRec<R, V>,
+    pub(crate) rec: Tree<R, V>,
 }
 
 impl<R, V> Clone for FingerTree<R, V>
@@ -389,9 +366,7 @@ where
     ///
     /// Complexity: `O(1)`
     pub fn new() -> Self {
-        FingerTree {
-            rec: FingerTreeRec::empty(),
-        }
+        FingerTree { rec: Tree::empty() }
     }
 
     /// Returns `true` if finger tree is empty
@@ -399,7 +374,7 @@ where
     /// Complexity: `O(1)`
     pub fn is_empty(&self) -> bool {
         match self.rec.as_ref() {
-            FingerTreeInner::Empty => true,
+            TreeInner::Empty => true,
             _ => false,
         }
     }
@@ -482,13 +457,13 @@ where
     /// Complexity: `O(ln(N))`
     pub fn concat(&self, other: &Self) -> Self {
         FingerTree {
-            rec: FingerTreeRec::concat(&self.rec, &[], &other.rec),
+            rec: Tree::concat(&self.rec, &[], &other.rec),
         }
     }
 
     /// Double ended iterator visiting all elements of the tree from left to right
-    pub fn iter(&self) -> FingerTreeIter<R, V> {
-        FingerTreeIter::new(self)
+    pub fn iter(&self) -> Iter<R, V> {
+        Iter::new(self)
     }
 }
 
@@ -545,25 +520,43 @@ where
 {
 }
 
-pub struct FingerTreeIter<R, V>
+enum IterFrame<R, V>
 where
     R: Refs<V>,
     V: Measured,
 {
-    tail: FingerTree<R, V>,
+    Node(Node<R, V>),
+    Tree(Tree<R, V>),
 }
 
-impl<R, V> FingerTreeIter<R, V>
+pub struct Iter<R, V>
 where
     R: Refs<V>,
     V: Measured,
 {
-    fn new(tail: &FingerTree<R, V>) -> Self {
-        FingerTreeIter { tail: tail.clone() }
+    frames: VecDeque<IterFrame<R, V>>,
+}
+
+impl<R, V> Iter<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    fn new(ft: &FingerTree<R, V>) -> Self {
+        let mut frames = VecDeque::new();
+        frames.push_back(IterFrame::Tree(ft.rec.clone()));
+        Iter { frames }
     }
 }
 
-impl<R, V> Iterator for FingerTreeIter<R, V>
+impl<R, V> FusedIterator for Iter<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+}
+
+impl<R, V> Iterator for Iter<R, V>
 where
     R: Refs<V>,
     V: Measured,
@@ -571,28 +564,99 @@ where
     type Item = V;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (head, tail) = self.tail.view_left()?;
-        self.tail = tail;
-        Some(head)
+        loop {
+            match self.frames.pop_back()? {
+                IterFrame::Node(node) => match node.as_ref() {
+                    NodeInner::Leaf(value) => return Some(value.clone()),
+                    NodeInner::Node2 { left, right, .. } => {
+                        self.frames.push_back(IterFrame::Node(right.clone()));
+                        self.frames.push_back(IterFrame::Node(left.clone()));
+                        continue;
+                    }
+                    NodeInner::Node3 {
+                        left,
+                        middle,
+                        right,
+                        ..
+                    } => {
+                        self.frames.push_back(IterFrame::Node(right.clone()));
+                        self.frames.push_back(IterFrame::Node(middle.clone()));
+                        self.frames.push_back(IterFrame::Node(left.clone()));
+                        continue;
+                    }
+                },
+                IterFrame::Tree(tree) => match tree.as_ref() {
+                    Empty => continue,
+                    Single(node) => {
+                        self.frames.push_back(IterFrame::Node(node.clone()));
+                        continue;
+                    }
+                    Deep {
+                        left, spine, right, ..
+                    } => {
+                        for node in right.as_ref().iter().rev() {
+                            self.frames.push_back(IterFrame::Node(node.clone()));
+                        }
+                        self.frames.push_back(IterFrame::Tree(spine.clone()));
+                        for node in left.as_ref().iter().rev() {
+                            self.frames.push_back(IterFrame::Node(node.clone()));
+                        }
+                        continue;
+                    }
+                },
+            }
+        }
     }
 }
 
-impl<R, V> FusedIterator for FingerTreeIter<R, V>
-where
-    R: Refs<V>,
-    V: Measured,
-{
-}
-
-impl<R, V> DoubleEndedIterator for FingerTreeIter<R, V>
+impl<R, V> DoubleEndedIterator for Iter<R, V>
 where
     R: Refs<V>,
     V: Measured,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
-        let (head, tail) = self.tail.view_right()?;
-        self.tail = tail;
-        Some(head)
+        loop {
+            match self.frames.pop_front()? {
+                IterFrame::Node(node) => match node.as_ref() {
+                    NodeInner::Leaf(value) => return Some(value.clone()),
+                    NodeInner::Node2 { left, right, .. } => {
+                        self.frames.push_front(IterFrame::Node(left.clone()));
+                        self.frames.push_front(IterFrame::Node(right.clone()));
+                        continue;
+                    }
+                    NodeInner::Node3 {
+                        left,
+                        middle,
+                        right,
+                        ..
+                    } => {
+                        self.frames.push_front(IterFrame::Node(left.clone()));
+                        self.frames.push_front(IterFrame::Node(middle.clone()));
+                        self.frames.push_front(IterFrame::Node(right.clone()));
+                        continue;
+                    }
+                },
+                IterFrame::Tree(tree) => match tree.as_ref() {
+                    Empty => continue,
+                    Single(node) => {
+                        self.frames.push_front(IterFrame::Node(node.clone()));
+                        continue;
+                    }
+                    Deep {
+                        left, spine, right, ..
+                    } => {
+                        for node in left.as_ref() {
+                            self.frames.push_front(IterFrame::Node(node.clone()));
+                        }
+                        self.frames.push_front(IterFrame::Tree(spine.clone()));
+                        for node in right.as_ref() {
+                            self.frames.push_front(IterFrame::Node(node.clone()));
+                        }
+                        continue;
+                    }
+                },
+            }
+        }
     }
 }
 
@@ -602,7 +666,8 @@ where
     V: Measured,
 {
     type Item = V;
-    type IntoIter = FingerTreeIter<R, V>;
+    type IntoIter = Iter<R, V>;
+
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
@@ -614,9 +679,10 @@ where
     V: Measured,
 {
     type Item = V;
-    type IntoIter = FingerTreeIter<R, V>;
+    type IntoIter = Iter<R, V>;
+
     fn into_iter(self) -> Self::IntoIter {
-        (&self).into_iter()
+        self.iter()
     }
 }
 

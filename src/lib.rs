@@ -76,7 +76,7 @@ pub use measure::Measured;
 pub use monoid::Monoid;
 pub use node::NodeInner;
 pub use reference::{ArcRefs, RcRefs, Ref, Refs};
-pub use tree::{FingerTree, FingerTreeInner};
+pub use tree::{FingerTree, TreeInner};
 
 pub mod rc {
     //! `Rc` based implementation of `FingerTree`

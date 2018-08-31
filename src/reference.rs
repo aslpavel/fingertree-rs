@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use measure::Measured;
 use node::NodeInner;
-use tree::FingerTreeInner;
+use tree::TreeInner;
 
 /// Interface that all reference types should impelmenet
 pub trait Ref: Clone + Deref
@@ -79,7 +79,7 @@ where
     /// Reference on a `Node`
     type Node: Ref<Target = NodeInner<Self, V>>;
     /// Reference on a `Tree`
-    type Tree: Ref<Target = FingerTreeInner<Self, V>>;
+    type Tree: Ref<Target = TreeInner<Self, V>>;
 }
 
 /// Helper macro to define custom [`Refs`](trait.Refs.html) for `FingerTree`
@@ -103,7 +103,7 @@ macro_rules! fingertree_define_refs {
             V: $crate::measure::Measured,
         {
             type Node = $ref<$crate::NodeInner<Self, V>>;
-            type Tree = $ref<$crate::FingerTreeInner<Self, V>>;
+            type Tree = $ref<$crate::TreeInner<Self, V>>;
         }
     };
 }

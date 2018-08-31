@@ -58,6 +58,19 @@ fn reversed() {
         ft.iter().rev().collect::<Vec<_>>(),
         (0..TEST_SIZE).map(Size).rev().collect::<Vec<_>>()
     );
+
+    let mut iter = ft.iter();
+    assert_eq!(
+        iter.by_ref().take(TEST_SIZE / 2).collect::<Vec<_>>(),
+        (0..TEST_SIZE / 2).map(Size).collect::<Vec<_>>(),
+    );
+    assert_eq!(
+        iter.rev().collect::<Vec<_>>(),
+        (TEST_SIZE / 2..TEST_SIZE)
+            .rev()
+            .map(Size)
+            .collect::<Vec<_>>(),
+    );
 }
 
 #[test]
