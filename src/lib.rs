@@ -77,7 +77,7 @@ pub use measure::Measured;
 pub use monoid::Monoid;
 pub use node::NodeInner;
 pub use reference::{ArcRefs, RcRefs, Ref, Refs};
-pub use tree::{FingerTree, TreeInner};
+pub use tree::TreeInner;
 
 pub mod rc {
     //! `Rc` based implementation of `FingerTree`
@@ -93,4 +93,261 @@ pub mod sync {
     ///
     /// This implementation becomes `{Send|Sync}` if `V: Send + Sync, V::Measure: Send + Sync`
     pub type FingerTree<V> = super::FingerTree<super::ArcRefs, V>;
+}
+
+use std::fmt;
+use std::iter::FromIterator;
+use std::ops::Add;
+
+use iter::Iter;
+use node::Node;
+use tree::Tree;
+
+/// FingerTree implemenetation
+///
+/// FingerTree is parametrized by two type parpameters
+///   - `R` - type family trick which determines type of references used in
+///           implementation. This crate implementes [`ArcRefs`](enum.ArcRefs.html) which is based
+///           on `Arc` atomic reference counter, and [`RcRefs`](enum.RcRefs.html) which is based
+///           on `Rc`.
+///   - `V` - value type which must be measurable and cheaply clonable.
+pub struct FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    pub(crate) rec: Tree<R, V>,
+}
+
+impl<R, V> Clone for FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    fn clone(&self) -> Self {
+        FingerTree {
+            rec: self.rec.clone(),
+        }
+    }
+}
+
+impl<R, V> FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    /// Constructs a new, empty `FingerTree`
+    ///
+    /// Complexity: `O(1)`
+    pub fn new() -> Self {
+        FingerTree { rec: Tree::empty() }
+    }
+
+    /// Returns `true` if finger tree is empty
+    ///
+    /// Complexity: `O(1)`
+    pub fn is_empty(&self) -> bool {
+        match self.rec.as_ref() {
+            TreeInner::Empty => true,
+            _ => false,
+        }
+    }
+
+    /// Creates new tree with value prepended to the left side of the tree
+    ///
+    /// Amortized complexity: `O(1)`
+    pub fn push_left(&self, value: V) -> Self {
+        FingerTree {
+            rec: self.rec.push_left(Node::leaf(value)),
+        }
+    }
+
+    /// Creates new tree with value prepended to the right side of the tree
+    ///
+    /// Amortized complexity: `O(1)`
+    pub fn push_right(&self, value: V) -> Self {
+        FingerTree {
+            rec: self.rec.push_right(Node::leaf(value)),
+        }
+    }
+
+    /// Destrutures tree into a tuple with first element of it containing first
+    /// element from the left side of the tree, and second element contains tree
+    /// with reset of the elements
+    ///
+    /// Amortized complexity: `O(1)`
+    pub fn view_left(&self) -> Option<(V, Self)> {
+        let (head, tail) = self.rec.view_left()?;
+        match head.as_ref() {
+            NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
+            _ => panic!("not leaf returned from to level finger-tree"),
+        }
+    }
+
+    /// Destrutures tree into a tuple with first element of it containing first
+    /// element from the left side of the tree, and second element contains tree
+    /// with reset of the elements
+    ///
+    /// Amortized complexity: `O(1)`
+    pub fn view_right(&self) -> Option<(V, Self)> {
+        let (head, tail) = self.rec.view_right()?;
+        match head.as_ref() {
+            NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
+            _ => panic!("not leaf returned from to level finger-tree"),
+        }
+    }
+
+    /// Destructures tree into two three, using provided predicate.
+    ///
+    /// Predicate must be monotinic function accepting accumulated measure of elments
+    /// and changing its value from `true` to `false`. This function basically behave
+    /// as if we would iterate all elements from left to right, and accumlating measure
+    /// of all iterated elements, calling predicate on this accumulated value and once
+    /// its value flips from `true` to `false` we stop iteration and form two threes
+    /// from already iterated elements and the rest of the elements.
+    ///
+    /// Complexity: `O(ln(N))`
+    pub fn split<F>(&self, mut pred: F) -> (FingerTree<R, V>, FingerTree<R, V>)
+    where
+        F: FnMut(&V::Measure) -> bool,
+    {
+        if self.is_empty() {
+            (Self::new(), Self::new())
+        } else if (&mut pred)(&self.measure()) {
+            let (l, x, r) = self.rec.split(&V::Measure::unit(), &mut pred);
+            (
+                FingerTree { rec: l },
+                FingerTree {
+                    rec: r.push_left(x),
+                },
+            )
+        } else {
+            (self.clone(), Self::new())
+        }
+    }
+
+    /// Construct new finger tree wich is concatination of `self` and `other`
+    ///
+    /// Complexity: `O(ln(N))`
+    pub fn concat(&self, other: &Self) -> Self {
+        FingerTree {
+            rec: Tree::concat(&self.rec, &[], &other.rec),
+        }
+    }
+
+    /// Double ended iterator visiting all elements of the tree from left to right
+    pub fn iter(&self) -> Iter<R, V> {
+        Iter::new(self)
+    }
+}
+
+impl<R, V> Measured for FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    type Measure = V::Measure;
+
+    fn measure(&self) -> Self::Measure {
+        self.rec.measure()
+    }
+}
+
+impl<'a, 'b, R, V> Add<&'b FingerTree<R, V>> for &'a FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    type Output = FingerTree<R, V>;
+
+    fn add(self, other: &'b FingerTree<R, V>) -> Self::Output {
+        self.concat(other)
+    }
+}
+
+impl<R, V> Add<FingerTree<R, V>> for FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    type Output = FingerTree<R, V>;
+
+    fn add(self, other: Self) -> Self::Output {
+        self.concat(&other)
+    }
+}
+
+impl<R, V> PartialEq for FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured + PartialEq,
+{
+    fn eq(&self, other: &FingerTree<R, V>) -> bool {
+        self.iter().zip(other).all(|(a, b)| a == b)
+    }
+}
+
+impl<R, V> Eq for FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured + Eq,
+{
+}
+
+impl<'a, R, V> IntoIterator for &'a FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    type Item = V;
+    type IntoIter = Iter<R, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<R, V> IntoIterator for FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    type Item = V;
+    type IntoIter = Iter<R, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<R, V> FromIterator<V> for FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    fn from_iter<I: IntoIterator<Item = V>>(iter: I) -> Self {
+        iter.into_iter()
+            .fold(FingerTree::new(), |ft, item| ft.push_right(item))
+    }
+}
+
+impl<R, V> fmt::Debug for FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured + fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "FingerTree")?;
+        f.debug_list().entries(self.iter()).finish()
+    }
+}
+
+impl<R, V> Default for FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    fn default() -> Self {
+        FingerTree::new()
+    }
 }

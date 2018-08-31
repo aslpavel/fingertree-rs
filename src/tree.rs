@@ -1,10 +1,6 @@
-use std::fmt;
-use std::iter::FromIterator;
-use std::ops::Add;
-
 use self::TreeInner::{Deep, Empty, Single};
 use digit::Digit;
-use iter::Iter;
+
 use measure::Measured;
 use monoid::Monoid;
 use node::{Node, NodeInner};
@@ -80,19 +76,23 @@ where
     R: Refs<V>,
     V: Measured,
 {
-    fn empty() -> Self {
+    pub(crate) fn empty() -> Self {
         Tree {
             inner: R::Tree::new(TreeInner::Empty),
         }
     }
 
-    fn single(value: Node<R, V>) -> Self {
+    pub(crate) fn single(value: Node<R, V>) -> Self {
         Tree {
             inner: R::Tree::new(TreeInner::Single(value)),
         }
     }
 
-    fn deep(left: Digit<Node<R, V>>, spine: Tree<R, V>, right: Digit<Node<R, V>>) -> Self {
+    pub(crate) fn deep(
+        left: Digit<Node<R, V>>,
+        spine: Tree<R, V>,
+        right: Digit<Node<R, V>>,
+    ) -> Self {
         let measure = left.measure().join(&spine.measure()).join(&right.measure());
         Tree {
             inner: R::Tree::new(TreeInner::Deep {
@@ -104,7 +104,7 @@ where
         }
     }
 
-    fn push_left(&self, value: Node<R, V>) -> Self {
+    pub(crate) fn push_left(&self, value: Node<R, V>) -> Self {
         match self.as_ref() {
             Empty => Self::single(value),
             Single(other) => Self::deep(
@@ -128,7 +128,7 @@ where
         }
     }
 
-    fn push_right(&self, value: Node<R, V>) -> Self {
+    pub(crate) fn push_right(&self, value: Node<R, V>) -> Self {
         match self.as_ref() {
             Empty => Self::single(value),
             Single(other) => Self::deep(
@@ -165,7 +165,7 @@ where
         }
     }
 
-    fn view_left(&self) -> Option<(Node<R, V>, Self)> {
+    pub(crate) fn view_left(&self) -> Option<(Node<R, V>, Self)> {
         match self.as_ref() {
             Empty => None,
             Single(value) => Some((value.clone(), Tree::empty())),
@@ -189,7 +189,7 @@ where
         }
     }
 
-    fn view_right(&self) -> Option<(Node<R, V>, Self)> {
+    pub(crate) fn view_right(&self) -> Option<(Node<R, V>, Self)> {
         match self.as_ref() {
             Empty => None,
             Single(value) => Some((value.clone(), Tree::empty())),
@@ -202,7 +202,11 @@ where
         }
     }
 
-    fn split<F>(&self, measure: &V::Measure, pred: &mut F) -> (Tree<R, V>, Node<R, V>, Tree<R, V>)
+    pub(crate) fn split<F>(
+        &self,
+        measure: &V::Measure,
+        pred: &mut F,
+    ) -> (Tree<R, V>, Node<R, V>, Tree<R, V>)
     where
         F: FnMut(&V::Measure) -> bool,
     {
@@ -237,7 +241,7 @@ where
         }
     }
 
-    fn concat(left: &Self, mid: &[Node<R, V>], right: &Self) -> Self {
+    pub(crate) fn concat(left: &Self, mid: &[Node<R, V>], right: &Self) -> Self {
         match (left.as_ref(), right.as_ref()) {
             (Empty, _) => mid
                 .iter()
@@ -326,254 +330,5 @@ where
             .as_ref()
             .iter()
             .fold(Tree::empty(), |ft, v| ft.push_right(v.clone()))
-    }
-}
-
-/// FingerTree implemenetation
-///
-/// FingerTree is parametrized by two type parpameters
-///   - `R` - type family trick which determines type of references used in
-///           implementation. This crate implementes [`ArcRefs`](enum.ArcRefs.html) which is based
-///           on `Arc` atomic reference counter, and [`RcRefs`](enum.RcRefs.html) which is based
-///           on `Rc`.
-///   - `V` - value type which must be measurable and cheaply clonable.
-pub struct FingerTree<R, V>
-where
-    R: Refs<V>,
-    V: Measured,
-{
-    pub(crate) rec: Tree<R, V>,
-}
-
-impl<R, V> Clone for FingerTree<R, V>
-where
-    R: Refs<V>,
-    V: Measured,
-{
-    fn clone(&self) -> Self {
-        FingerTree {
-            rec: self.rec.clone(),
-        }
-    }
-}
-
-impl<R, V> FingerTree<R, V>
-where
-    R: Refs<V>,
-    V: Measured,
-{
-    /// Constructs a new, empty `FingerTree`
-    ///
-    /// Complexity: `O(1)`
-    pub fn new() -> Self {
-        FingerTree { rec: Tree::empty() }
-    }
-
-    /// Returns `true` if finger tree is empty
-    ///
-    /// Complexity: `O(1)`
-    pub fn is_empty(&self) -> bool {
-        match self.rec.as_ref() {
-            TreeInner::Empty => true,
-            _ => false,
-        }
-    }
-
-    /// Creates new tree with value prepended to the left side of the tree
-    ///
-    /// Amortized complexity: `O(1)`
-    pub fn push_left(&self, value: V) -> Self {
-        FingerTree {
-            rec: self.rec.push_left(Node::leaf(value)),
-        }
-    }
-
-    /// Creates new tree with value prepended to the right side of the tree
-    ///
-    /// Amortized complexity: `O(1)`
-    pub fn push_right(&self, value: V) -> Self {
-        FingerTree {
-            rec: self.rec.push_right(Node::leaf(value)),
-        }
-    }
-
-    /// Destrutures tree into a tuple with first element of it containing first
-    /// element from the left side of the tree, and second element contains tree
-    /// with reset of the elements
-    ///
-    /// Amortized complexity: `O(1)`
-    pub fn view_left(&self) -> Option<(V, Self)> {
-        let (head, tail) = self.rec.view_left()?;
-        match head.as_ref() {
-            NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
-            _ => panic!("not leaf returned from to level finger-tree"),
-        }
-    }
-
-    /// Destrutures tree into a tuple with first element of it containing first
-    /// element from the left side of the tree, and second element contains tree
-    /// with reset of the elements
-    ///
-    /// Amortized complexity: `O(1)`
-    pub fn view_right(&self) -> Option<(V, Self)> {
-        let (head, tail) = self.rec.view_right()?;
-        match head.as_ref() {
-            NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
-            _ => panic!("not leaf returned from to level finger-tree"),
-        }
-    }
-
-    /// Destructures tree into two three, using provided predicate.
-    ///
-    /// Predicate must be monotinic function accepting accumulated measure of elments
-    /// and changing its value from `true` to `false`. This function basically behave
-    /// as if we would iterate all elements from left to right, and accumlating measure
-    /// of all iterated elements, calling predicate on this accumulated value and once
-    /// its value flips from `true` to `false` we stop iteration and form two threes
-    /// from already iterated elements and the rest of the elements.
-    ///
-    /// Complexity: `O(ln(N))`
-    pub fn split<F>(&self, mut pred: F) -> (FingerTree<R, V>, FingerTree<R, V>)
-    where
-        F: FnMut(&V::Measure) -> bool,
-    {
-        if self.is_empty() {
-            (Self::new(), Self::new())
-        } else if (&mut pred)(&self.measure()) {
-            let (l, x, r) = self.rec.split(&V::Measure::unit(), &mut pred);
-            (
-                FingerTree { rec: l },
-                FingerTree {
-                    rec: r.push_left(x),
-                },
-            )
-        } else {
-            (self.clone(), Self::new())
-        }
-    }
-
-    /// Construct new finger tree wich is concatination of `self` and `other`
-    ///
-    /// Complexity: `O(ln(N))`
-    pub fn concat(&self, other: &Self) -> Self {
-        FingerTree {
-            rec: Tree::concat(&self.rec, &[], &other.rec),
-        }
-    }
-
-    /// Double ended iterator visiting all elements of the tree from left to right
-    pub fn iter(&self) -> Iter<R, V> {
-        Iter::new(self)
-    }
-}
-
-impl<R, V> Measured for FingerTree<R, V>
-where
-    R: Refs<V>,
-    V: Measured,
-{
-    type Measure = V::Measure;
-
-    fn measure(&self) -> Self::Measure {
-        self.rec.measure()
-    }
-}
-
-impl<'a, 'b, R, V> Add<&'b FingerTree<R, V>> for &'a FingerTree<R, V>
-where
-    R: Refs<V>,
-    V: Measured,
-{
-    type Output = FingerTree<R, V>;
-
-    fn add(self, other: &'b FingerTree<R, V>) -> Self::Output {
-        self.concat(other)
-    }
-}
-
-impl<R, V> Add<FingerTree<R, V>> for FingerTree<R, V>
-where
-    R: Refs<V>,
-    V: Measured,
-{
-    type Output = FingerTree<R, V>;
-
-    fn add(self, other: Self) -> Self::Output {
-        self.concat(&other)
-    }
-}
-
-impl<R, V> PartialEq for FingerTree<R, V>
-where
-    R: Refs<V>,
-    V: Measured + PartialEq,
-{
-    fn eq(&self, other: &FingerTree<R, V>) -> bool {
-        self.iter().zip(other).all(|(a, b)| a == b)
-    }
-}
-
-impl<R, V> Eq for FingerTree<R, V>
-where
-    R: Refs<V>,
-    V: Measured + Eq,
-{
-}
-
-impl<'a, R, V> IntoIterator for &'a FingerTree<R, V>
-where
-    R: Refs<V>,
-    V: Measured,
-{
-    type Item = V;
-    type IntoIter = Iter<R, V>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-
-impl<R, V> IntoIterator for FingerTree<R, V>
-where
-    R: Refs<V>,
-    V: Measured,
-{
-    type Item = V;
-    type IntoIter = Iter<R, V>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-
-impl<R, V> FromIterator<V> for FingerTree<R, V>
-where
-    R: Refs<V>,
-    V: Measured,
-{
-    fn from_iter<I: IntoIterator<Item = V>>(iter: I) -> Self {
-        iter.into_iter()
-            .fold(FingerTree::new(), |ft, item| ft.push_right(item))
-    }
-}
-
-impl<R, V> fmt::Debug for FingerTree<R, V>
-where
-    R: Refs<V>,
-    V: Measured + fmt::Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "FingerTree")?;
-        f.debug_list().entries(self.iter()).finish()
-    }
-}
-
-impl<R, V> Default for FingerTree<R, V>
-where
-    R: Refs<V>,
-    V: Measured,
-{
-    fn default() -> Self {
-        FingerTree::new()
     }
 }

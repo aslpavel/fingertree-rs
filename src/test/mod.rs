@@ -3,11 +3,12 @@ mod simple;
 
 use std::fmt;
 
+use super::FingerTree;
 use measure::Measured;
 use monoid::Monoid;
 use node::{Node, NodeInner};
 use reference::Refs;
-use tree::{FingerTree, Tree, TreeInner};
+use tree::{Tree, TreeInner};
 
 // constraint that is dynamic in current implementation but static in
 // original algorithm due to the fact that rust does not support

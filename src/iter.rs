@@ -1,10 +1,11 @@
 use std::collections::VecDeque;
 use std::iter::FusedIterator;
 
+use super::FingerTree;
 use measure::Measured;
 use node::{Node, NodeInner};
 use reference::Refs;
-use tree::{FingerTree, Tree, TreeInner};
+use tree::{Tree, TreeInner};
 
 enum IterFrame<R, V>
 where
