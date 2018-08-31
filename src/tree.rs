@@ -488,7 +488,7 @@ where
 
     /// Double ended iterator visiting all elements of the tree from left to right
     pub fn iter(&self) -> FingerTreeIter<R, V> {
-        FingerTreeIter { tail: self.clone() }
+        FingerTreeIter::new(self)
     }
 }
 
@@ -553,6 +553,16 @@ where
     tail: FingerTree<R, V>,
 }
 
+impl<R, V> FingerTreeIter<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    fn new(tail: &FingerTree<R, V>) -> Self {
+        FingerTreeIter { tail: tail.clone() }
+    }
+}
+
 impl<R, V> Iterator for FingerTreeIter<R, V>
 where
     R: Refs<V>,
@@ -594,7 +604,7 @@ where
     type Item = V;
     type IntoIter = FingerTreeIter<R, V>;
     fn into_iter(self) -> Self::IntoIter {
-        FingerTreeIter { tail: self.clone() }
+        self.iter()
     }
 }
 

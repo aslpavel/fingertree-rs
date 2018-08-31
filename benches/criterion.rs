@@ -44,6 +44,13 @@ fn bench_concat(c: &mut Criterion) {
     );
 }
 
+fn bench_iter(c: &mut Criterion) {
+    let ft: rc::FingerTree<_> = (0..65536).map(Size).collect();
+    c.bench_function("iterator", move |b| {
+        b.iter(|| ft.iter().fold(0, |count, _| count + 1))
+    });
+}
+
 fn bench_arc_vs_rc(c: &mut Criterion) {
     fn split_concat<R>(b: &mut Bencher, i: &(usize, usize))
     where
@@ -68,10 +75,11 @@ fn bench_arc_vs_rc(c: &mut Criterion) {
 
 criterion_group! {
     benches,
-    bench_from,
-    bench_split,
-    bench_concat,
     bench_arc_vs_rc,
+    bench_concat,
+    bench_from,
+    bench_iter,
+    bench_split,
 }
 
 criterion_main!(benches);
