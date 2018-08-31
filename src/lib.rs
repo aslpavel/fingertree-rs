@@ -63,6 +63,7 @@
 extern crate quickcheck;
 
 mod digit;
+mod iter;
 pub mod measure;
 pub mod monoid;
 mod node;

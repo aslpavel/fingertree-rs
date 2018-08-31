@@ -27,7 +27,7 @@ fn concat() {
         let right: RcFingerTree<_> = (split..TEST_SIZE).map(Size).collect();
 
         let ft = &left + &right;
-        assert_eq!(ft.measure(), left.measure().plus(&right.measure()));
+        assert_eq!(ft.measure(), left.measure().join(&right.measure()));
         validate(&left);
         validate(&right);
         validate(&ft);

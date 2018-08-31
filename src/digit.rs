@@ -28,7 +28,7 @@ where
             let slice = self.as_ref();
             let mut measure = measure.clone();
             for (index, item) in slice.iter().enumerate() {
-                measure = measure.plus(&item.measure());
+                measure = measure.join(&item.measure());
                 if pred(&measure) {
                     return (&slice[..index], &slice[index], &slice[index + 1..]);
                 }
@@ -69,8 +69,8 @@ impl<V: Measured> Measured for Digit<V> {
     fn measure(&self) -> Self::Measure {
         self.as_ref()
             .iter()
-            .fold(Self::Measure::zero(), |measure, val| {
-                measure.plus(&val.measure())
+            .fold(Self::Measure::unit(), |measure, val| {
+                measure.join(&val.measure())
             })
     }
 }

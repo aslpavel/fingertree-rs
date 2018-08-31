@@ -40,7 +40,7 @@ where
                 } => {
                     validate_node_rec(depth - 1, left);
                     validate_node_rec(depth - 1, right);
-                    assert_eq!(measure.clone(), left.measure().plus(&right.measure()));
+                    assert_eq!(measure.clone(), left.measure().join(&right.measure()));
                 }
                 NodeInner::Node3 {
                     ref left,
@@ -54,8 +54,8 @@ where
                     assert_eq!(
                         measure.clone(),
                         left.measure()
-                            .plus(&middle.measure())
-                            .plus(&right.measure())
+                            .join(&middle.measure())
+                            .join(&right.measure())
                     );
                 }
             }
@@ -76,19 +76,19 @@ where
                 ref right,
                 ref measure,
             } => {
-                let mut m = V::Measure::zero();
+                let mut m = V::Measure::unit();
 
                 for node in left.as_ref() {
                     validate_node_rec(depth, node);
-                    m = m.plus(&node.measure());
+                    m = m.join(&node.measure());
                 }
 
                 validate_ft_rec(depth + 1, spine);
-                m = m.plus(&spine.measure());
+                m = m.join(&spine.measure());
 
                 for node in right.as_ref() {
                     validate_node_rec(depth, node);
-                    m = m.plus(&node.measure());
+                    m = m.join(&node.measure());
                 }
 
                 assert_eq!(measure.clone(), m);

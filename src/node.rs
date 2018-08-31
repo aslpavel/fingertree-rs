@@ -45,7 +45,7 @@ where
     }
 
     pub(crate) fn node2(left: Self, right: Self) -> Self {
-        let measure = left.measure().plus(&right.measure());
+        let measure = left.measure().join(&right.measure());
         Node {
             inner: R::Node::new(NodeInner::Node2 {
                 measure,
@@ -58,8 +58,8 @@ where
     pub(crate) fn node3(left: Self, middle: Self, right: Self) -> Self {
         let measure = left
             .measure()
-            .plus(&middle.measure())
-            .plus(&right.measure());
+            .join(&middle.measure())
+            .join(&right.measure());
         Node {
             inner: R::Node::new(NodeInner::Node3 {
                 measure,

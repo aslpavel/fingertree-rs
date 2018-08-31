@@ -5,17 +5,17 @@ use std::ops::{Add, Deref};
 ///
 /// Monoid is a tuple of `(S, O, I)` where:
 ///   - `S` - set of elements
-///   - `O` - binary operation on S `S x S -> S`, here called `plus`
-///   - `I` - identity element of this monoid, here called `zero`
+///   - `O` - binary operation on S `S x S -> S`, here called `join`
+///   - `I` - identity element of this monoid, here called `unit`
 ///
 /// Every monoid implementation should satisfy following laws:
 ///  - **associativity**: `a + (b + c) == (a + b) + c`
-///  -  **identity element**: `zero + a == a + zero == a`
+///  -  **identity element**: `unit + a == a + unit == a`
 pub trait Monoid {
-    /// `zero` or `identity` element of monoid
-    fn zero() -> Self;
-    /// `plus` operation of `Monoid`
-    fn plus(&self, other: &Self) -> Self;
+    /// `unit` or `identity` element of monoid
+    fn unit() -> Self;
+    /// `join` operation of `Monoid`
+    fn join(&self, other: &Self) -> Self;
 }
 
 // impl<A, B> Monoid for (A, B)
@@ -23,12 +23,12 @@ pub trait Monoid {
 //     A: Monoid,
 //     B: Monoid,
 // {
-//     fn zero() -> Self {
-//         (A::zero(), B::zero())
+//     fn unit() -> Self {
+//         (A::unit(), B::unit())
 //     }
 
-//     fn plus(&self, other: &Self) -> Self {
-//         (self.0.plus(&other.0), self.1.plus(&other.1))
+//     fn join(&self, other: &Self) -> Self {
+//         (self.0.join(&other.0), self.1.join(&other.1))
 //     }
 // }
 
@@ -41,11 +41,11 @@ where
     for<'a> &'a T: Add<Output = T>,
     T: Default,
 {
-    fn zero() -> Self {
+    fn unit() -> Self {
         Sum(T::default())
     }
 
-    fn plus(&self, other: &Self) -> Self {
+    fn join(&self, other: &Self) -> Self {
         Sum(&self.0 + &other.0)
     }
 }
