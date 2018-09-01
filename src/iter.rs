@@ -16,6 +16,26 @@ where
     Tree(Tree<R, V>),
 }
 
+impl<'a, R, V> From<&'a Node<R, V>> for IterFrame<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    fn from(node: &'a Node<R, V>) -> Self {
+        IterFrame::Node(node.clone())
+    }
+}
+
+impl<'a, R, V> From<&'a Tree<R, V>> for IterFrame<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    fn from(tree: &'a Tree<R, V>) -> Self {
+        IterFrame::Tree(tree.clone())
+    }
+}
+
 pub struct Iter<R, V>
 where
     R: Refs<V>,
@@ -33,6 +53,14 @@ where
         let mut frames = VecDeque::new();
         frames.push_back(IterFrame::Tree(ft.rec.clone()));
         Iter { frames }
+    }
+
+    fn push_back<F: Into<IterFrame<R, V>>>(&mut self, frame: F) {
+        self.frames.push_back(frame.into())
+    }
+
+    fn push_front<F: Into<IterFrame<R, V>>>(&mut self, frame: F) {
+        self.frames.push_front(frame.into())
     }
 }
 
@@ -56,8 +84,8 @@ where
                 IterFrame::Node(node) => match node.as_ref() {
                     NodeInner::Leaf(value) => return Some(value.clone()),
                     NodeInner::Node2 { left, right, .. } => {
-                        self.frames.push_back(IterFrame::Node(right.clone()));
-                        self.frames.push_back(IterFrame::Node(left.clone()));
+                        self.push_back(right);
+                        self.push_back(left);
                         continue;
                     }
                     NodeInner::Node3 {
@@ -66,27 +94,27 @@ where
                         right,
                         ..
                     } => {
-                        self.frames.push_back(IterFrame::Node(right.clone()));
-                        self.frames.push_back(IterFrame::Node(middle.clone()));
-                        self.frames.push_back(IterFrame::Node(left.clone()));
+                        self.push_back(right);
+                        self.push_back(middle);
+                        self.push_back(left);
                         continue;
                     }
                 },
                 IterFrame::Tree(tree) => match tree.as_ref() {
                     TreeInner::Empty => continue,
                     TreeInner::Single(node) => {
-                        self.frames.push_back(IterFrame::Node(node.clone()));
+                        self.push_back(node);
                         continue;
                     }
                     TreeInner::Deep {
                         left, spine, right, ..
                     } => {
                         for node in right.as_ref().iter().rev() {
-                            self.frames.push_back(IterFrame::Node(node.clone()));
+                            self.push_back(node);
                         }
-                        self.frames.push_back(IterFrame::Tree(spine.clone()));
+                        self.push_back(spine);
                         for node in left.as_ref().iter().rev() {
-                            self.frames.push_back(IterFrame::Node(node.clone()));
+                            self.push_back(node);
                         }
                         continue;
                     }
@@ -107,8 +135,8 @@ where
                 IterFrame::Node(node) => match node.as_ref() {
                     NodeInner::Leaf(value) => return Some(value.clone()),
                     NodeInner::Node2 { left, right, .. } => {
-                        self.frames.push_front(IterFrame::Node(left.clone()));
-                        self.frames.push_front(IterFrame::Node(right.clone()));
+                        self.push_front(left);
+                        self.push_front(right);
                         continue;
                     }
                     NodeInner::Node3 {
@@ -117,27 +145,27 @@ where
                         right,
                         ..
                     } => {
-                        self.frames.push_front(IterFrame::Node(left.clone()));
-                        self.frames.push_front(IterFrame::Node(middle.clone()));
-                        self.frames.push_front(IterFrame::Node(right.clone()));
+                        self.push_front(left);
+                        self.push_front(middle);
+                        self.push_front(right);
                         continue;
                     }
                 },
                 IterFrame::Tree(tree) => match tree.as_ref() {
                     TreeInner::Empty => continue,
                     TreeInner::Single(node) => {
-                        self.frames.push_front(IterFrame::Node(node.clone()));
+                        self.push_front(node);
                         continue;
                     }
                     TreeInner::Deep {
                         left, spine, right, ..
                     } => {
                         for node in left.as_ref() {
-                            self.frames.push_front(IterFrame::Node(node.clone()));
+                            self.push_front(node);
                         }
-                        self.frames.push_front(IterFrame::Tree(spine.clone()));
+                        self.push_front(spine);
                         for node in right.as_ref() {
-                            self.frames.push_front(IterFrame::Node(node.clone()));
+                            self.push_front(node);
                         }
                         continue;
                     }
