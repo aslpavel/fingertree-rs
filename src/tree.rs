@@ -1,6 +1,7 @@
+use smallvec::SmallVec;
+
 use self::TreeInner::{Deep, Empty, Single};
 use digit::Digit;
-
 use measure::Measured;
 use monoid::Monoid;
 use node::{Node, NodeInner};
@@ -277,7 +278,7 @@ where
 
                 let mut count = left.len() + mid.len() + right.len();
                 let mut iter = left.iter().chain(mid).chain(right);
-                let mut nodes = Vec::with_capacity(count / 3 + 1);
+                let mut nodes = SmallVec::<[Node<R, V>; 32]>::new();
                 while count != 0 {
                     match (iter.next(), iter.next(), iter.next()) {
                         (Some(v0), Some(v1), Some(v2)) => {
