@@ -147,8 +147,8 @@ where
     ///
     /// Complexity: `O(1)`
     pub fn is_empty(&self) -> bool {
-        match self.rec.as_ref() {
-            TreeInner::Empty => true,
+        match self.rec {
+            Tree::Empty => true,
             _ => false,
         }
     }

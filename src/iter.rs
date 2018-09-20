@@ -6,7 +6,7 @@ use super::FingerTree;
 use measure::Measured;
 use node::{Node, NodeInner};
 use reference::Refs;
-use tree::{Tree, TreeInner};
+use tree::Tree;
 
 enum IterFrame<R, V>
 where
@@ -103,20 +103,18 @@ where
                         }
                     },
                 },
-                IterFrame::Tree(tree) => match tree.as_ref() {
-                    TreeInner::Empty => continue,
-                    TreeInner::Single(node) => {
-                        self.push_back(node);
+                IterFrame::Tree(tree) => match tree {
+                    Tree::Empty => continue,
+                    Tree::Single(node) => {
+                        self.push_back(&node);
                         continue;
                     }
-                    TreeInner::Deep {
-                        left, spine, right, ..
-                    } => {
-                        for node in right.as_ref().iter().rev() {
+                    Tree::Deep(deep) => {
+                        for node in deep.right.as_ref().iter().rev() {
                             self.push_back(node);
                         }
-                        self.push_back(spine);
-                        for node in left.as_ref().iter().rev() {
+                        self.push_back(&deep.spine);
+                        for node in deep.left.as_ref().iter().rev() {
                             self.push_back(node);
                         }
                         continue;
@@ -156,20 +154,18 @@ where
                         }
                     },
                 },
-                IterFrame::Tree(tree) => match tree.as_ref() {
-                    TreeInner::Empty => continue,
-                    TreeInner::Single(node) => {
-                        self.push_front(node);
+                IterFrame::Tree(tree) => match tree {
+                    Tree::Empty => continue,
+                    Tree::Single(node) => {
+                        self.push_front(&node);
                         continue;
                     }
-                    TreeInner::Deep {
-                        left, spine, right, ..
-                    } => {
-                        for node in left.as_ref() {
+                    Tree::Deep(deep) => {
+                        for node in deep.left.as_ref() {
                             self.push_front(node);
                         }
-                        self.push_front(spine);
-                        for node in right.as_ref() {
+                        self.push_front(&deep.spine);
+                        for node in deep.right.as_ref() {
                             self.push_front(node);
                         }
                         continue;
