@@ -8,7 +8,7 @@ use measure::Measured;
 use monoid::Monoid;
 use node::{Node, NodeInner};
 use reference::Refs;
-use tree::{Tree, TreeInner};
+use tree::Tree;
 
 // constraint that is dynamic in current implementation but static in
 // original algorithm due to the fact that rust does not support
@@ -68,31 +68,26 @@ where
         V: Measured,
         V::Measure: Eq + PartialEq + fmt::Debug,
     {
-        match ft.as_ref() {
-            TreeInner::Empty => (),
-            TreeInner::Single(ref node) => validate_node_rec(depth, node),
-            TreeInner::Deep {
-                ref left,
-                ref spine,
-                ref right,
-                ref measure,
-            } => {
+        match ft {
+            Tree::Empty => (),
+            Tree::Single(ref node) => validate_node_rec(depth, node),
+            Tree::Deep(ref deep) => {
                 let mut m = V::Measure::unit();
 
-                for node in left.as_ref() {
+                for node in deep.left.as_ref() {
                     validate_node_rec(depth, node);
                     m = m.join(&node.measure());
                 }
 
-                validate_ft_rec(depth + 1, spine);
-                m = m.join(&spine.measure());
+                validate_ft_rec(depth + 1, &deep.spine);
+                m = m.join(&deep.spine.measure());
 
-                for node in right.as_ref() {
+                for node in deep.right.as_ref() {
                     validate_node_rec(depth, node);
                     m = m.join(&node.measure());
                 }
 
-                assert_eq!(measure.clone(), m);
+                assert_eq!(deep.measure.clone(), m);
             }
         }
     }

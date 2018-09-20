@@ -1,4 +1,4 @@
-use self::TreeInner::{Deep, Empty, Single};
+use self::Tree::{Deep, Empty, Single};
 use digit::Digit;
 use measure::Measured;
 use monoid::Monoid;
@@ -6,40 +6,25 @@ use node::Node;
 use reference::{Ref, Refs};
 
 /// Only visible to defne custom [`Refs`](trait.Refs.html)
-pub enum TreeInner<R, V>
+pub struct TreeInner<R, V>
 where
     R: Refs<V>,
     V: Measured,
 {
-    #[doc(hidden)]
+    pub(crate) measure: V::Measure,
+    pub(crate) left: Digit<Node<R, V>>,
+    pub(crate) spine: Tree<R, V>, //TODO: lazy spine
+    pub(crate) right: Digit<Node<R, V>>,
+}
+
+pub enum Tree<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
     Empty,
-    #[doc(hidden)]
     Single(Node<R, V>),
-    #[doc(hidden)]
-    Deep {
-        measure: V::Measure,
-        left: Digit<Node<R, V>>,
-        spine: Tree<R, V>, //TODO: lazy spine
-        right: Digit<Node<R, V>>,
-    },
-}
-
-pub struct Tree<R, V>
-where
-    R: Refs<V>,
-    V: Measured,
-{
-    inner: R::Tree,
-}
-
-impl<R, V> AsRef<TreeInner<R, V>> for Tree<R, V>
-where
-    R: Refs<V>,
-    V: Measured,
-{
-    fn as_ref(&self) -> &TreeInner<R, V> {
-        &self.inner
-    }
+    Deep(R::Tree),
 }
 
 impl<R, V> Measured for Tree<R, V>
@@ -50,10 +35,10 @@ where
     type Measure = V::Measure;
 
     fn measure(&self) -> Self::Measure {
-        match self.as_ref() {
+        match self {
             Empty => Self::Measure::unit(),
             Single(node) => node.measure(),
-            Deep { measure, .. } => measure.clone(),
+            Deep(deep) => deep.measure.clone(),
         }
     }
 }
@@ -64,8 +49,10 @@ where
     V: Measured,
 {
     fn clone(&self) -> Self {
-        Tree {
-            inner: self.inner.clone(),
+        match self {
+            Empty => Empty,
+            Single(node) => Single(node.clone()),
+            Deep(deep) => Deep(deep.clone()),
         }
     }
 }
@@ -76,15 +63,11 @@ where
     V: Measured,
 {
     pub(crate) fn empty() -> Self {
-        Tree {
-            inner: R::Tree::new(TreeInner::Empty),
-        }
+        Tree::Empty
     }
 
-    pub(crate) fn single(value: Node<R, V>) -> Self {
-        Tree {
-            inner: R::Tree::new(TreeInner::Single(value)),
-        }
+    pub(crate) fn single(node: Node<R, V>) -> Self {
+        Tree::Single(node)
     }
 
     pub(crate) fn deep(
@@ -93,59 +76,63 @@ where
         right: Digit<Node<R, V>>,
     ) -> Self {
         let measure = left.measure().join(&spine.measure()).join(&right.measure());
-        Tree {
-            inner: R::Tree::new(TreeInner::Deep {
-                measure,
-                left,
-                spine,
-                right,
-            }),
-        }
+        Tree::Deep(R::Tree::new(TreeInner {
+            measure,
+            left,
+            spine,
+            right,
+        }))
     }
 
     pub(crate) fn push_left(&self, value: Node<R, V>) -> Self {
-        match self.as_ref() {
+        match self {
             Empty => Self::single(value),
             Single(other) => Self::deep(
                 Digit::One([value]),
                 Self::empty(),
                 Digit::One([other.clone()]),
             ),
-            Deep {
-                left, spine, right, ..
-            } => {
-                if let [l0, l1, l2, l3] = left.as_ref() {
+            Deep(deep) => {
+                if let [l0, l1, l2, l3] = deep.left.as_ref() {
                     Self::deep(
                         Digit::Two([value, l0.clone()]),
-                        spine.push_left(Node::node3(l1.clone(), l2.clone(), l3.clone())),
-                        right.clone(),
+                        deep.spine
+                            .push_left(Node::node3(l1.clone(), l2.clone(), l3.clone())),
+                        deep.right.clone(),
                     )
                 } else {
-                    Self::deep(&Digit::One([value]) + left, spine.clone(), right.clone())
+                    Self::deep(
+                        &Digit::One([value]) + &deep.left,
+                        deep.spine.clone(),
+                        deep.right.clone(),
+                    )
                 }
             }
         }
     }
 
     pub(crate) fn push_right(&self, value: Node<R, V>) -> Self {
-        match self.as_ref() {
+        match self {
             Empty => Self::single(value),
             Single(other) => Self::deep(
                 Digit::One([other.clone()]),
                 Self::empty(),
                 Digit::One([value]),
             ),
-            Deep {
-                left, spine, right, ..
-            } => {
-                if let [r0, r1, r2, r3] = right.as_ref() {
+            Deep(deep) => {
+                if let [r0, r1, r2, r3] = deep.right.as_ref() {
                     Self::deep(
-                        left.clone(),
-                        spine.push_right(Node::node3(r0.clone(), r1.clone(), r2.clone())),
+                        deep.left.clone(),
+                        deep.spine
+                            .push_right(Node::node3(r0.clone(), r1.clone(), r2.clone())),
                         Digit::Two([r3.clone(), value]),
                     )
                 } else {
-                    Self::deep(left.clone(), spine.clone(), right + Digit::One([value]))
+                    Self::deep(
+                        deep.left.clone(),
+                        deep.spine.clone(),
+                        &deep.right + Digit::One([value]),
+                    )
                 }
             }
         }
@@ -165,14 +152,15 @@ where
     }
 
     pub(crate) fn view_left(&self) -> Option<(Node<R, V>, Self)> {
-        match self.as_ref() {
+        match self {
             Empty => None,
             Single(value) => Some((value.clone(), Tree::empty())),
-            Deep {
-                left, spine, right, ..
-            } => match left.as_ref().split_first() {
+            Deep(deep) => match deep.left.as_ref().split_first() {
                 None => panic!("digit cannot be empty"),
-                Some((head, tail)) => Some((head.clone(), Self::deep_left(tail, spine, right))),
+                Some((head, tail)) => Some((
+                    head.clone(),
+                    Self::deep_left(tail, &deep.spine, &deep.right),
+                )),
             },
         }
     }
@@ -189,14 +177,15 @@ where
     }
 
     pub(crate) fn view_right(&self) -> Option<(Node<R, V>, Self)> {
-        match self.as_ref() {
+        match self {
             Empty => None,
             Single(value) => Some((value.clone(), Tree::empty())),
-            Deep {
-                left, spine, right, ..
-            } => match right.as_ref().split_last() {
+            Deep(deep) => match deep.right.as_ref().split_last() {
                 None => panic!("digit cannot be empty"),
-                Some((head, tail)) => Some((head.clone(), Self::deep_right(left, spine, tail))),
+                Some((head, tail)) => Some((
+                    head.clone(),
+                    Self::deep_right(&deep.left, &deep.spine, tail),
+                )),
             },
         }
     }
@@ -209,33 +198,39 @@ where
     where
         F: FnMut(&V::Measure) -> bool,
     {
-        match self.as_ref() {
+        match self {
             Empty => panic!("recursive split of finger-tree called on empty tree"),
             Single(value) => (Tree::empty(), value.clone(), Tree::empty()),
-            Deep {
-                left, spine, right, ..
-            } => {
+            Deep(deep) => {
                 // left
-                let left_measure = measure.join(&left.measure());
+                let left_measure = measure.join(&deep.left.measure());
                 if pred(&left_measure) {
-                    let (l, x, r) = left.split(measure, pred);
-                    return (Tree::from(l), x.clone(), Self::deep_left(r, spine, right));
+                    let (l, x, r) = deep.left.split(measure, pred);
+                    return (
+                        Tree::from(l),
+                        x.clone(),
+                        Self::deep_left(r, &deep.spine, &deep.right),
+                    );
                 }
                 // spine
-                let spine_measure = left_measure.join(&spine.measure());
+                let spine_measure = left_measure.join(&deep.spine.measure());
                 if pred(&spine_measure) {
-                    let (sl, sx, sr) = spine.split(&left_measure, pred);
+                    let (sl, sx, sr) = deep.spine.split(&left_measure, pred);
                     let sx = Digit::from(&sx);
                     let (l, x, r) = sx.split(&left_measure.join(&sl.measure()), pred);
                     return (
-                        Self::deep_right(left, &sl, l),
+                        Self::deep_right(&deep.left, &sl, l),
                         x.clone(),
-                        Self::deep_left(r, &sr, right),
+                        Self::deep_left(r, &sr, &deep.right),
                     );
                 }
                 // right
-                let (l, x, r) = right.split(&spine_measure, pred);
-                (Self::deep_right(left, spine, l), x.clone(), Tree::from(r))
+                let (l, x, r) = deep.right.split(&spine_measure, pred);
+                (
+                    Self::deep_right(&deep.left, &deep.spine, l),
+                    x.clone(),
+                    Tree::from(r),
+                )
             }
         }
     }
@@ -259,35 +254,22 @@ where
         mid: &mut dyn Iterator<Item = Node<R, V>>,
         right: &Self,
     ) -> Self {
-        match (left.as_ref(), right.as_ref()) {
+        match (left, right) {
             (Empty, _) => right.clone().push_left_many(mid),
             (_, Empty) => left.clone().push_right_many(mid),
             (Single(left), _) => right.clone().push_left_many(mid).push_left(left.clone()),
             (_, Single(right)) => left.clone().push_right_many(mid).push_right(right.clone()),
-            (
-                Deep {
-                    left: left0,
-                    spine: spine0,
-                    right: right0,
-                    ..
-                },
-                Deep {
-                    left: left1,
-                    spine: spine1,
-                    right: right1,
-                    ..
-                },
-            ) => {
-                let left = right0.as_ref().iter().cloned();
-                let right = left1.as_ref().iter().cloned();
+            (Deep(deep0), Deep(deep1)) => {
+                let left = deep0.right.as_ref().iter().cloned();
+                let right = deep1.left.as_ref().iter().cloned();
                 Self::deep(
-                    left0.clone(),
+                    deep0.left.clone(),
                     Self::concat(
-                        spine0,
+                        &deep0.spine,
                         &mut Node::lift(left.chain(mid).chain(right)),
-                        spine1,
+                        &deep1.spine,
                     ),
-                    right1.clone(),
+                    deep1.right.clone(),
                 )
             }
         }
