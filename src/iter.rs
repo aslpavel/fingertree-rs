@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::iter::FusedIterator;
+use std::ops::Deref;
 
 use super::FingerTree;
 use measure::Measured;
@@ -81,24 +82,26 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             match self.frames.pop_back()? {
-                IterFrame::Node(node) => match node.as_ref() {
-                    NodeInner::Leaf(value) => return Some(value.clone()),
-                    NodeInner::Node2 { left, right, .. } => {
-                        self.push_back(right);
-                        self.push_back(left);
-                        continue;
-                    }
-                    NodeInner::Node3 {
-                        left,
-                        middle,
-                        right,
-                        ..
-                    } => {
-                        self.push_back(right);
-                        self.push_back(middle);
-                        self.push_back(left);
-                        continue;
-                    }
+                IterFrame::Node(node) => match node {
+                    Node::Leaf(value) => return Some(value.clone()),
+                    Node::Node(node) => match node.deref() {
+                        NodeInner::Node2 { left, right, .. } => {
+                            self.push_back(right);
+                            self.push_back(left);
+                            continue;
+                        }
+                        NodeInner::Node3 {
+                            left,
+                            middle,
+                            right,
+                            ..
+                        } => {
+                            self.push_back(right);
+                            self.push_back(middle);
+                            self.push_back(left);
+                            continue;
+                        }
+                    },
                 },
                 IterFrame::Tree(tree) => match tree.as_ref() {
                     TreeInner::Empty => continue,
@@ -132,24 +135,26 @@ where
     fn next_back(&mut self) -> Option<Self::Item> {
         loop {
             match self.frames.pop_front()? {
-                IterFrame::Node(node) => match node.as_ref() {
-                    NodeInner::Leaf(value) => return Some(value.clone()),
-                    NodeInner::Node2 { left, right, .. } => {
-                        self.push_front(left);
-                        self.push_front(right);
-                        continue;
-                    }
-                    NodeInner::Node3 {
-                        left,
-                        middle,
-                        right,
-                        ..
-                    } => {
-                        self.push_front(left);
-                        self.push_front(middle);
-                        self.push_front(right);
-                        continue;
-                    }
+                IterFrame::Node(node) => match node {
+                    Node::Leaf(value) => return Some(value.clone()),
+                    Node::Node(node) => match node.deref() {
+                        NodeInner::Node2 { left, right, .. } => {
+                            self.push_front(left);
+                            self.push_front(right);
+                            continue;
+                        }
+                        NodeInner::Node3 {
+                            left,
+                            middle,
+                            right,
+                            ..
+                        } => {
+                            self.push_front(left);
+                            self.push_front(middle);
+                            self.push_front(right);
+                            continue;
+                        }
+                    },
                 },
                 IterFrame::Tree(tree) => match tree.as_ref() {
                     TreeInner::Empty => continue,

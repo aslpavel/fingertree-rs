@@ -178,8 +178,8 @@ where
     /// Amortized complexity: `O(1)`
     pub fn view_left(&self) -> Option<(V, Self)> {
         let (head, tail) = self.rec.view_left()?;
-        match head.as_ref() {
-            NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
+        match head {
+            Node::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
             _ => panic!("not leaf returned from to level finger-tree"),
         }
     }
@@ -191,8 +191,8 @@ where
     /// Amortized complexity: `O(1)`
     pub fn view_right(&self) -> Option<(V, Self)> {
         let (head, tail) = self.rec.view_right()?;
-        match head.as_ref() {
-            NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
+        match head {
+            Node::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
             _ => panic!("not leaf returned from to level finger-tree"),
         }
     }

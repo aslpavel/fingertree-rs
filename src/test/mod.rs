@@ -2,6 +2,7 @@ mod quickcheck;
 mod simple;
 
 use std::fmt;
+use std::ops::Deref;
 
 use super::FingerTree;
 use measure::Measured;
@@ -27,38 +28,40 @@ where
         V::Measure: Eq + PartialEq + fmt::Debug,
     {
         if depth == 0 {
-            match node.as_ref() {
-                NodeInner::Leaf(..) => (),
+            match node {
+                Node::Leaf(..) => (),
                 _ => panic!("all zero depth nodes must be leafs"),
             }
         } else {
-            match node.as_ref() {
-                NodeInner::Leaf(..) => panic!("leaf node with depth: {}", depth),
-                NodeInner::Node2 {
-                    ref left,
-                    ref right,
-                    ref measure,
-                } => {
-                    validate_node_rec(depth - 1, left);
-                    validate_node_rec(depth - 1, right);
-                    assert_eq!(measure.clone(), left.measure().join(&right.measure()));
-                }
-                NodeInner::Node3 {
-                    ref left,
-                    ref middle,
-                    ref right,
-                    ref measure,
-                } => {
-                    validate_node_rec(depth - 1, left);
-                    validate_node_rec(depth - 1, middle);
-                    validate_node_rec(depth - 1, right);
-                    assert_eq!(
-                        measure.clone(),
-                        left.measure()
-                            .join(&middle.measure())
-                            .join(&right.measure())
-                    );
-                }
+            match node {
+                Node::Leaf(..) => panic!("leaf node with depth: {}", depth),
+                Node::Node(node) => match node.deref() {
+                    NodeInner::Node2 {
+                        ref left,
+                        ref right,
+                        ref measure,
+                    } => {
+                        validate_node_rec(depth - 1, left);
+                        validate_node_rec(depth - 1, right);
+                        assert_eq!(measure.clone(), left.measure().join(&right.measure()));
+                    }
+                    NodeInner::Node3 {
+                        ref left,
+                        ref middle,
+                        ref right,
+                        ref measure,
+                    } => {
+                        validate_node_rec(depth - 1, left);
+                        validate_node_rec(depth - 1, middle);
+                        validate_node_rec(depth - 1, right);
+                        assert_eq!(
+                            measure.clone(),
+                            left.measure()
+                                .join(&middle.measure())
+                                .join(&right.measure())
+                        );
+                    }
+                },
             }
         }
     }
