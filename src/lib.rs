@@ -61,7 +61,6 @@
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;
-extern crate smallvec;
 
 mod digit;
 mod iter;
@@ -232,7 +231,7 @@ where
     /// Complexity: `O(ln(N))`
     pub fn concat(&self, other: &Self) -> Self {
         FingerTree {
-            rec: Tree::concat(&self.rec, &[], &other.rec),
+            rec: Tree::concat(&self.rec, &mut ::std::iter::empty(), &other.rec),
         }
     }
 

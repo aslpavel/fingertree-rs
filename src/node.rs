@@ -1,3 +1,5 @@
+use std::mem;
+
 use measure::Measured;
 use monoid::Monoid;
 use reference::{Ref, Refs};
@@ -69,6 +71,14 @@ where
             }),
         }
     }
+
+    /// Lift iterator of nodes into iterator of nodes, which are one level deeper
+    pub(crate) fn lift<I>(iter: I) -> LiftNodesIter<I::IntoIter, R, V>
+    where
+        I: IntoIterator<Item = Node<R, V>>,
+    {
+        LiftNodesIter::new(iter.into_iter())
+    }
 }
 
 impl<R, V> Clone for Node<R, V>
@@ -106,5 +116,81 @@ where
 {
     fn as_ref(&self) -> &NodeInner<R, V> {
         &*self.inner
+    }
+}
+
+// Iterator decorator which takes iterator of `Nodes` and make them one level deeper (lift)
+// by combining adjacent nodes. What we whant is essentially
+// ```
+// nodes :: [a] -> [Node a]
+// nodes [a, b] = [Node2 a b]
+// nodes [a, b, c] = [Node3 a b c]
+// nodes [a, b, c, d] = [Node2 a b, Node2 c d]
+// nodes (a : b : c : xs) = Node3 a b c : nodes xs
+// ```
+pub(crate) struct LiftNodesIter<I, R, V>
+where
+    I: Iterator<Item = Node<R, V>>,
+    R: Refs<V>,
+    V: Measured,
+{
+    buff: [Option<Node<R, V>>; 5], // look ahead ring buffer
+    index: u8,                     // current index in buffer
+    left: u8,                      // nodes left in buffer
+    iter: I,
+}
+
+impl<I, R, V> LiftNodesIter<I, R, V>
+where
+    I: Iterator<Item = Node<R, V>>,
+    R: Refs<V>,
+    V: Measured,
+{
+    fn new(mut iter: I) -> Self {
+        let buff = [
+            iter.next(),
+            iter.next(),
+            iter.next(),
+            iter.next(),
+            iter.next(),
+        ];
+        let left = buff.iter().map(|n| if n.is_some() { 1 } else { 0 }).sum();
+        LiftNodesIter {
+            buff,
+            index: 0,
+            left,
+            iter,
+        }
+    }
+
+    fn buff_next(&mut self) -> Node<R, V> {
+        let next = self.iter.next();
+        if next.is_none() {
+            self.left -= 1;
+        }
+        let node = mem::replace(&mut self.buff[self.index as usize], next).unwrap();
+        self.index = (self.index + 1) % 5;
+        node
+    }
+}
+
+impl<I, R, V> Iterator for LiftNodesIter<I, R, V>
+where
+    I: Iterator<Item = Node<R, V>>,
+    R: Refs<V>,
+    V: Measured,
+{
+    type Item = Node<R, V>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.left {
+            0 => None,
+            2 | 4 => Some(Node::node2(self.buff_next(), self.buff_next())),
+            _ => Some(Node::node3(
+                self.buff_next(),
+                self.buff_next(),
+                self.buff_next(),
+            )),
+        }
     }
 }

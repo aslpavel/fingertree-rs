@@ -1,10 +1,8 @@
-use smallvec::SmallVec;
-
 use self::TreeInner::{Deep, Empty, Single};
 use digit::Digit;
 use measure::Measured;
 use monoid::Monoid;
-use node::{Node, NodeInner};
+use node::Node;
 use reference::{Ref, Refs};
 
 /// Only visible to defne custom [`Refs`](trait.Refs.html)
@@ -242,22 +240,30 @@ where
         }
     }
 
-    pub(crate) fn concat(left: &Self, mid: &[Node<R, V>], right: &Self) -> Self {
+    fn push_left_many(self, iter: &mut dyn Iterator<Item = Node<R, V>>) -> Self {
+        match iter.next() {
+            None => self,
+            Some(node) => self.push_left_many(iter).push_left(node),
+        }
+    }
+
+    fn push_right_many(self, iter: &mut dyn Iterator<Item = Node<R, V>>) -> Self {
+        match iter.next() {
+            None => self,
+            Some(node) => self.push_right(node).push_right_many(iter),
+        }
+    }
+
+    pub(crate) fn concat(
+        left: &Self,
+        mid: &mut dyn Iterator<Item = Node<R, V>>,
+        right: &Self,
+    ) -> Self {
         match (left.as_ref(), right.as_ref()) {
-            (Empty, _) => mid
-                .iter()
-                .rfold(right.clone(), |ft, item| ft.push_left(item.clone())),
-            (_, Empty) => mid
-                .iter()
-                .fold(left.clone(), |ft, item| ft.push_right(item.clone())),
-            (Single(l), _) => mid
-                .iter()
-                .rfold(right.clone(), |ft, item| ft.push_left(item.clone()))
-                .push_left(l.clone()),
-            (_, Single(r)) => mid
-                .iter()
-                .fold(left.clone(), |ft, item| ft.push_right(item.clone()))
-                .push_right(r.clone()),
+            (Empty, _) => right.clone().push_left_many(mid),
+            (_, Empty) => left.clone().push_right_many(mid),
+            (Single(left), _) => right.clone().push_left_many(mid).push_left(left.clone()),
+            (_, Single(right)) => left.clone().push_right_many(mid).push_right(right.clone()),
             (
                 Deep {
                     left: left0,
@@ -272,47 +278,15 @@ where
                     ..
                 },
             ) => {
-                // lift values to nodes
-                let left = right0.as_ref();
-                let right = left1.as_ref();
-
-                let mut count = left.len() + mid.len() + right.len();
-                let mut iter = left.iter().chain(mid).chain(right);
-                let mut nodes = SmallVec::<[Node<R, V>; 32]>::new();
-                while count != 0 {
-                    match (iter.next(), iter.next(), iter.next()) {
-                        (Some(v0), Some(v1), Some(v2)) => {
-                            count -= 3;
-                            nodes.push(Node::node3(v0.clone(), v1.clone(), v2.clone()));
-                        }
-                        (Some(v0), Some(v1), None) => {
-                            count -= 2;
-                            nodes.push(Node::node2(v0.clone(), v1.clone()));
-                        }
-                        (Some(v3), None, _) => {
-                            count -= 1;
-                            // this cannot be empty as left and right digit contain
-                            // at least one element each.
-                            match nodes.pop().expect("concat invariant violated").as_ref() {
-                                NodeInner::Node3 {
-                                    left: ref v0,
-                                    middle: ref v1,
-                                    right: ref v2,
-                                    ..
-                                } => {
-                                    nodes.push(Node::node2(v0.clone(), v1.clone()));
-                                    nodes.push(Node::node2(v2.clone(), v3.clone()));
-                                }
-                                _ => panic!("only nodes3 must be inserted before this branch"),
-                            }
-                        }
-                        (None, _, _) => {}
-                    }
-                }
-
+                let left = right0.as_ref().iter().cloned();
+                let right = left1.as_ref().iter().cloned();
                 Self::deep(
                     left0.clone(),
-                    Self::concat(spine0, &nodes, spine1),
+                    Self::concat(
+                        spine0,
+                        &mut Node::lift(left.chain(mid).chain(right)),
+                        spine1,
+                    ),
                     right1.clone(),
                 )
             }
