@@ -1,9 +1,9 @@
 use self::Tree::{Deep, Empty, Single};
-use digit::Digit;
-use measure::Measured;
-use monoid::Monoid;
-use node::Node;
-use reference::{Ref, Refs};
+use crate::digit::Digit;
+use crate::measure::Measured;
+use crate::monoid::Monoid;
+use crate::node::Node;
+use crate::reference::{Ref, Refs};
 
 /// Only visible to defne custom [`Refs`](trait.Refs.html)
 pub struct TreeInner<R, V>

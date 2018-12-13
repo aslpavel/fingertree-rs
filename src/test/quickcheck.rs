@@ -1,7 +1,7 @@
-use measure::{Measured, Size};
-use quickcheck::{Arbitrary, Gen};
-use sync::FingerTree;
-use test::validate;
+use crate::measure::{Measured, Size};
+use crate::sync::FingerTree;
+use crate::test::validate;
+use quickcheck::{quickcheck, Arbitrary, Gen};
 
 impl<V> Arbitrary for FingerTree<V>
 where

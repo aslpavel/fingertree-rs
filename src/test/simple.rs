@@ -1,8 +1,8 @@
-use measure::{Measured, Size};
-use monoid::Monoid;
-use rc::FingerTree as RcFingerTree;
-use sync::FingerTree as ArcFingerTree;
-use test::validate;
+use crate::measure::{Measured, Size};
+use crate::monoid::Monoid;
+use crate::rc::FingerTree as RcFingerTree;
+use crate::sync::FingerTree as ArcFingerTree;
+use crate::test::validate;
 
 const TEST_SIZE: usize = 512;
 
@@ -80,14 +80,16 @@ fn sync_send() {
     where
         V: Measured + Send + Sync,
         V::Measure: Send + Sync,
-    {}
+    {
+    }
 
     trait TestSync: Sync {}
     impl<V> TestSync for ArcFingerTree<V>
     where
         V: Measured + Send + Sync,
         V::Measure: Send + Sync,
-    {}
+    {
+    }
 
     fn is_sync<T: Sync>() {}
     fn is_send<T: Send>() {}

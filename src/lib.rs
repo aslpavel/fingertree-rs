@@ -58,10 +58,6 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
-#[cfg(test)]
-#[macro_use]
-extern crate quickcheck;
-
 mod digit;
 mod iter;
 pub mod measure;
@@ -73,11 +69,11 @@ mod tree;
 #[cfg(test)]
 mod test;
 
-pub use measure::Measured;
-pub use monoid::Monoid;
-pub use node::NodeInner;
-pub use reference::{ArcRefs, RcRefs, Ref, Refs};
-pub use tree::TreeInner;
+pub use crate::measure::Measured;
+pub use crate::monoid::Monoid;
+pub use crate::node::NodeInner;
+pub use crate::reference::{ArcRefs, RcRefs, Ref, Refs};
+pub use crate::tree::TreeInner;
 
 pub mod rc {
     //! `Rc` based implementation of `FingerTree`
@@ -99,9 +95,9 @@ use std::fmt;
 use std::iter::FromIterator;
 use std::ops::Add;
 
-use iter::Iter;
-use node::Node;
-use tree::Tree;
+use crate::iter::Iter;
+use crate::node::Node;
+use crate::tree::Tree;
 
 /// FingerTree implemenetation
 ///

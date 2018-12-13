@@ -1,9 +1,9 @@
 use std::ops::Add;
 
-use measure::Measured;
-use monoid::Monoid;
-use node::{Node, NodeInner};
-use reference::Refs;
+use crate::measure::Measured;
+use crate::monoid::Monoid;
+use crate::node::{Node, NodeInner};
+use crate::reference::Refs;
 
 #[derive(Clone)]
 pub enum Digit<V> {

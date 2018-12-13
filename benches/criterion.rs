@@ -1,8 +1,4 @@
-#[macro_use]
-extern crate criterion;
-extern crate fingertrees;
-
-use criterion::{Bencher, Criterion, Fun};
+use criterion::{criterion_group, criterion_main, Bencher, Criterion, Fun};
 use fingertrees::measure::Size;
 use fingertrees::{rc, ArcRefs, FingerTree, Measured, RcRefs, Refs};
 use std::collections::HashMap;

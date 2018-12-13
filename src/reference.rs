@@ -2,9 +2,9 @@ use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use measure::Measured;
-use node::NodeInner;
-use tree::TreeInner;
+use crate::measure::Measured;
+use crate::node::NodeInner;
+use crate::tree::TreeInner;
 
 /// Interface that all reference types should impelmenet
 pub trait Ref: Clone + Deref
@@ -34,13 +34,10 @@ impl<T> Ref for Arc<T> {
 ///
 /// # Example:
 /// ```
-/// #[macro_use]
-/// extern crate fingertrees;
-///
 /// use std::rc::Rc;
 /// use std::ops::Deref;
 /// use fingertrees::measure::Size;
-/// use fingertrees::{FingerTree, Measured, Ref};
+/// use fingertrees::{FingerTree, Measured, Ref, fingertree_define_refs};
 ///
 /// // your custom reference type
 /// struct MyRef<T>(Rc<T>);

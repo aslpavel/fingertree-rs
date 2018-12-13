@@ -4,11 +4,11 @@ mod simple;
 use std::fmt;
 
 use super::FingerTree;
-use measure::Measured;
-use monoid::Monoid;
-use node::{Node, NodeInner};
-use reference::Refs;
-use tree::Tree;
+use crate::measure::Measured;
+use crate::monoid::Monoid;
+use crate::node::{Node, NodeInner};
+use crate::reference::Refs;
+use crate::tree::Tree;
 
 // constraint that is dynamic in current implementation but static in
 // original algorithm due to the fact that rust does not support

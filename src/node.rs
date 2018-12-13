@@ -1,8 +1,8 @@
 use std::mem;
 
-use measure::Measured;
-use monoid::Monoid;
-use reference::{Ref, Refs};
+use crate::measure::Measured;
+use crate::monoid::Monoid;
+use crate::reference::{Ref, Refs};
 
 /// Only visible to defne custom [`Refs`](trait.Refs.html)
 pub enum NodeInner<R, V>

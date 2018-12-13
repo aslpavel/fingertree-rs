@@ -2,7 +2,7 @@
 use std::fmt;
 use std::ops::Deref;
 
-use monoid::{Monoid, Sum};
+use crate::monoid::{Monoid, Sum};
 
 /// Measured definition
 ///
