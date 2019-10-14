@@ -13,7 +13,7 @@ where
         vec.into_iter().collect()
     }
 
-    fn shrink(&self) -> Box<Iterator<Item = Self>> {
+    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
         let vec: Vec<_> = self.into_iter().collect();
         Box::new(vec.shrink().map(|v| v.into_iter().collect::<Self>()))
     }
@@ -27,7 +27,7 @@ where
         Size(Arbitrary::arbitrary(g))
     }
 
-    fn shrink(&self) -> Box<Iterator<Item = Self>> {
+    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
         Box::new((**self).shrink().map(|v| Size(v)))
     }
 }
