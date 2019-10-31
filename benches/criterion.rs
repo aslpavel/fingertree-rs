@@ -10,7 +10,7 @@ fn bench_from(c: &mut Criterion) {
     c.bench_function_over_inputs(
         "create from iter",
         |b, &&size| b.iter(|| (0..size).map(Size).collect::<rc::FingerTree<_>>()),
-        &[1 * KB, 2 * KB, 4 * KB, 16 * KB],
+        &[KB, 2 * KB, 4 * KB, 16 * KB],
     );
 }
 

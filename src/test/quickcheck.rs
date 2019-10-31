@@ -28,7 +28,7 @@ where
     }
 
     fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-        Box::new((**self).shrink().map(|v| Size(v)))
+        Box::new((**self).shrink().map(Size))
     }
 }
 
