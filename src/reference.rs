@@ -64,10 +64,8 @@ impl<T> Ref for Arc<T> {
 /// // define type family for your reference
 /// fingertree_define_refs!(MyRefs, MyRef);
 ///
-/// # fn main() {
 /// // now you can construct fingertree using your reference type
 /// let _: FingerTree<MyRefs, _> = (0..128).map(Size).collect();
-/// # }
 /// ```
 pub trait Refs<V>: Sized
 where
