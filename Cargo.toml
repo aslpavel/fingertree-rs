@@ -1,6 +1,6 @@
 [package]
 name = "fingertrees"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Pavel Aslanov <asl.pavel@gmail.com>"]
 description = "Immutable persisten finger trees"
 license = "MIT"
@@ -17,8 +17,8 @@ coveralls = { repository = "aslpavel/fingertree-rs" }
 [dependencies]
 
 [dev-dependencies]
-criterion = "0.3.0"
-quickcheck = "0.9.0"
+criterion = "0.3"
+quickcheck = "0.9"
 
 [lib]
 bench = false

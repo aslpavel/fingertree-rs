@@ -143,10 +143,7 @@ where
     ///
     /// Complexity: `O(1)`
     pub fn is_empty(&self) -> bool {
-        match self.rec {
-            Tree::Empty => true,
-            _ => false,
-        }
+        matches!(self.rec, Tree::Empty)
     }
 
     /// Creates new tree with value prepended to the left side of the tree
