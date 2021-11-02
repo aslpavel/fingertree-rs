@@ -178,7 +178,7 @@ where
     }
 
     /// Destrutures tree into a tuple with first element of it containing first
-    /// element from the left side of the tree, and second element contains tree
+    /// element from the right side of the tree, and second element contains tree
     /// with reset of the elements
     ///
     /// Amortized complexity: `O(1)`
