@@ -72,6 +72,39 @@ where
         }
     }
 
+    pub(crate) fn find<F>(&self, measure: V::Measure, pred: &mut F) -> &V
+    where
+        F: FnMut(&V::Measure) -> bool,
+    {
+        match self.as_ref() {
+            NodeInner::Leaf(leaf) => leaf,
+            NodeInner::Node2 { left, right, .. } => {
+                let left_measure = measure.join(&left.measure());
+                if pred(&left_measure) {
+                    left.find(measure, pred)
+                } else {
+                    right.find(left_measure, pred)
+                }
+            }
+            NodeInner::Node3 {
+                left,
+                middle,
+                right,
+                ..
+            } => {
+                let left_measure = measure.join(&left.measure());
+                if pred(&left_measure) {
+                    return left.find(measure, pred);
+                }
+                let middle_measure = left_measure.join(&middle.measure());
+                if pred(&middle_measure) {
+                    return middle.find(left_measure, pred);
+                }
+                right.find(middle_measure, pred)
+            }
+        }
+    }
+
     /// Lift iterator of nodes into iterator of nodes, which are one level deeper
     pub(crate) fn lift<I>(iter: I) -> LiftNodesIter<I::IntoIter, R, V>
     where
@@ -120,7 +153,7 @@ where
 }
 
 // Iterator decorator which takes iterator of `Nodes` and make them one level deeper (lift)
-// by combining adjacent nodes. What we whant is essentially
+// by combining adjacent nodes. What we want is essentially
 // ```
 // nodes :: [a] -> [Node a]
 // nodes [a, b] = [Node2 a b]

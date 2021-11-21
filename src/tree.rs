@@ -156,7 +156,7 @@ where
             Empty => None,
             Single(value) => Some((value.clone(), Tree::empty())),
             Deep(deep) => match deep.left.as_ref().split_first() {
-                None => panic!("digit cannot be empty"),
+                None => unreachable!("digit cannot be empty"),
                 Some((head, tail)) => Some((
                     head.clone(),
                     Self::deep_left(tail, &deep.spine, &deep.right),
@@ -181,7 +181,7 @@ where
             Empty => None,
             Single(value) => Some((value.clone(), Tree::empty())),
             Deep(deep) => match deep.right.as_ref().split_last() {
-                None => panic!("digit cannot be empty"),
+                None => unreachable!("digit cannot be empty"),
                 Some((head, tail)) => Some((
                     head.clone(),
                     Self::deep_right(&deep.left, &deep.spine, tail),
@@ -192,14 +192,14 @@ where
 
     pub(crate) fn split<F>(
         &self,
-        measure: &V::Measure,
+        measure: V::Measure,
         pred: &mut F,
     ) -> (Tree<R, V>, Node<R, V>, Tree<R, V>)
     where
         F: FnMut(&V::Measure) -> bool,
     {
         match self {
-            Empty => panic!("recursive split of finger-tree called on empty tree"),
+            Empty => unreachable!("recursive split of finger-tree called on empty tree"),
             Single(value) => (Tree::empty(), value.clone(), Tree::empty()),
             Deep(deep) => {
                 // left
@@ -215,9 +215,9 @@ where
                 // spine
                 let spine_measure = left_measure.join(&deep.spine.measure());
                 if pred(&spine_measure) {
-                    let (sl, sx, sr) = deep.spine.split(&left_measure, pred);
+                    let (sl, sx, sr) = deep.spine.split(left_measure.clone(), pred);
                     let sx = Digit::from(&sx);
-                    let (l, x, r) = sx.split(&left_measure.join(&sl.measure()), pred);
+                    let (l, x, r) = sx.split(left_measure.join(&sl.measure()), pred);
                     return (
                         Self::deep_right(&deep.left, &sl, l),
                         x.clone(),
@@ -225,7 +225,7 @@ where
                     );
                 }
                 // right
-                let (l, x, r) = deep.right.split(&spine_measure, pred);
+                let (l, x, r) = deep.right.split(spine_measure, pred);
                 (
                     Self::deep_right(&deep.left, &deep.spine, l),
                     x.clone(),
@@ -271,6 +271,32 @@ where
                     ),
                     deep1.right.clone(),
                 )
+            }
+        }
+    }
+
+    pub(crate) fn find<F>(&self, measure: V::Measure, pred: &mut F) -> &V
+    where
+        F: FnMut(&V::Measure) -> bool,
+    {
+        match self {
+            Empty => unreachable!("recursive find of finger-tree called on empty tree"),
+            Single(value) => value.find(measure, pred),
+            Deep(deep) => {
+                // left
+                let left_measure = measure.join(&deep.left.measure());
+                if pred(&left_measure) {
+                    let (measure, node) = deep.left.find(measure, pred);
+                    return node.find(measure, pred);
+                }
+                // spine
+                let spine_measure = left_measure.join(&deep.spine.measure());
+                if pred(&spine_measure) {
+                    return deep.spine.find(left_measure, pred);
+                }
+                // right
+                let (measure, node) = deep.right.find(spine_measure, pred);
+                node.find(measure, pred)
             }
         }
     }

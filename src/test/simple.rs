@@ -74,6 +74,15 @@ fn reversed() {
 }
 
 #[test]
+fn find() {
+    let ft: RcFingerTree<_> = (0..TEST_SIZE).map(Size).collect();
+    for index in 0..TEST_SIZE {
+        assert_eq!(ft.find(|m| **m > index), Some(&Size(index)))
+    }
+    assert!(ft.find(|m| **m > TEST_SIZE).is_none())
+}
+
+#[test]
 fn sync_send() {
     trait TestSend: Send {}
     impl<V> TestSend for ArcFingerTree<V>

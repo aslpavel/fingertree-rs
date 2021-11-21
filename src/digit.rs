@@ -17,7 +17,7 @@ impl<V> Digit<V>
 where
     V: Measured,
 {
-    pub(crate) fn split<F>(&self, measure: &V::Measure, pred: &mut F) -> (&[V], &V, &[V])
+    pub(crate) fn split<F>(&self, mut measure: V::Measure, pred: &mut F) -> (&[V], &V, &[V])
     where
         F: FnMut(&V::Measure) -> bool,
     {
@@ -26,7 +26,6 @@ where
             (&[], &slice[0], &[])
         } else {
             let slice = self.as_ref();
-            let mut measure = measure.clone();
             for (index, item) in slice.iter().enumerate() {
                 measure = measure.join(&item.measure());
                 if pred(&measure) {
@@ -36,6 +35,21 @@ where
             let index = slice.len() - 1;
             (&slice[..index], &slice[index], &[])
         }
+    }
+
+    pub(crate) fn find<F>(&self, mut measure: V::Measure, pred: &mut F) -> (V::Measure, &V)
+    where
+        F: FnMut(&V::Measure) -> bool,
+    {
+        let last = self.as_ref().len() - 1;
+        for (index, value) in self.as_ref().iter().enumerate() {
+            let next_measure = measure.join(&value.measure());
+            if pred(&next_measure) || index == last {
+                return (measure, value);
+            }
+            measure = next_measure;
+        }
+        unreachable!()
     }
 }
 

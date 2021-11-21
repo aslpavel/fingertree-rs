@@ -173,7 +173,7 @@ where
         let (head, tail) = self.rec.view_left()?;
         match head.as_ref() {
             NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
-            _ => panic!("not leaf returned from to level finger-tree"),
+            _ => unreachable!("not leaf returned from to level finger-tree"),
         }
     }
 
@@ -186,17 +186,17 @@ where
         let (head, tail) = self.rec.view_right()?;
         match head.as_ref() {
             NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
-            _ => panic!("not leaf returned from to level finger-tree"),
+            _ => unreachable!("not leaf returned from to level finger-tree"),
         }
     }
 
     /// Destructures tree into two three, using provided predicate.
     ///
     /// Predicate must be monotinic function accepting accumulated measure of elments
-    /// and changing its value from `true` to `false`. This function basically behave
+    /// and changing its value from `false` to `true`. This function basically behave
     /// as if we would iterate all elements from left to right, and accumlating measure
     /// of all iterated elements, calling predicate on this accumulated value and once
-    /// its value flips from `true` to `false` we stop iteration and form two threes
+    /// its value flips from `false` to `true` we stop iteration and form two thees
     /// from already iterated elements and the rest of the elements.
     ///
     /// Complexity: `O(ln(N))`
@@ -207,7 +207,7 @@ where
         if self.is_empty() {
             (Self::new(), Self::new())
         } else if (&mut pred)(&self.measure()) {
-            let (l, x, r) = self.rec.split(&V::Measure::unit(), &mut pred);
+            let (l, x, r) = self.rec.split(V::Measure::unit(), &mut pred);
             (
                 FingerTree { rec: l },
                 FingerTree {
@@ -216,6 +216,18 @@ where
             )
         } else {
             (self.clone(), Self::new())
+        }
+    }
+
+    /// Find element for which predicate function `pred` flips from `false` to `true`
+    pub fn find<F>(&self, mut pred: F) -> Option<&V>
+    where
+        F: FnMut(&V::Measure) -> bool,
+    {
+        if self.is_empty() || !(&mut pred)(&self.measure()) {
+            None
+        } else {
+            Some(self.rec.find(V::Measure::unit(), &mut pred))
         }
     }
 
