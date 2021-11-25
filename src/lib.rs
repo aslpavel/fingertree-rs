@@ -192,11 +192,11 @@ where
 
     /// Destructures tree into two three, using provided predicate.
     ///
-    /// Predicate must be monotinic function accepting accumulated measure of elments
+    /// Predicate must be monotinic function accepting accumulated measure of elements
     /// and changing its value from `false` to `true`. This function basically behave
     /// as if we would iterate all elements from left to right, and accumlating measure
     /// of all iterated elements, calling predicate on this accumulated value and once
-    /// its value flips from `false` to `true` we stop iteration and form two thees
+    /// its value flips from `false` to `true` we stop iteration and form two trees
     /// from already iterated elements and the rest of the elements.
     ///
     /// Complexity: `O(ln(N))`
