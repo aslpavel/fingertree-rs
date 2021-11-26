@@ -219,6 +219,39 @@ where
         }
     }
 
+    /// partial logic from `.split(...)` with only **left** part returned
+    pub fn split_left<F>(&self, mut pred: F) -> FingerTree<R, V>
+    where
+        F: FnMut(&V::Measure) -> bool,
+    {
+        if self.is_empty() {
+            Self::new()
+        } else if (&mut pred)(&self.measure()) {
+            let (l, _x) = self.rec.split_left(V::Measure::unit(), &mut pred);
+            FingerTree { rec: l }
+        } else {
+            self.clone()
+        }
+    }
+
+    /// partial logic from `.split(...)` with only **right** part returned
+    pub fn split_right<F>(&self, mut pred: F) -> FingerTree<R, V>
+    where
+        F: FnMut(&V::Measure) -> bool,
+    {
+        if self.is_empty() {
+            Self::new()
+        } else if (&mut pred)(&self.measure()) {
+            let (_m, x, r) = self.rec.split_right(V::Measure::unit(), &mut pred);
+
+            FingerTree {
+                rec: r.push_left(x),
+            }
+        } else {
+            Self::new()
+        }
+    }
+
     /// Find element for which predicate function `pred` flips from `false` to `true`
     pub fn find<F>(&self, mut pred: F) -> Option<&V>
     where
