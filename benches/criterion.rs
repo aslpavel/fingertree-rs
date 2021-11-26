@@ -31,6 +31,34 @@ fn ft_split(c: &mut Criterion) {
     group.finish();
 }
 
+fn ft_split_left(c: &mut Criterion) {
+    let ft: rc::FingerTree<_> = (0..1024).map(Size).collect();
+
+    let mut group = c.benchmark_group("split_left");
+    for position in SPLIT_1024 {
+        group.bench_with_input(
+            BenchmarkId::new("position", position),
+            position,
+            |b, position| b.iter(|| ft.split_left(|m| **m > *position)),
+        );
+    }
+    group.finish();
+}
+
+fn ft_split_right(c: &mut Criterion) {
+    let ft: rc::FingerTree<_> = (0..1024).map(Size).collect();
+
+    let mut group = c.benchmark_group("split_right");
+    for position in SPLIT_1024 {
+        group.bench_with_input(
+            BenchmarkId::new("position", position),
+            position,
+            |b, position| b.iter(|| ft.split_right(|m| **m > *position)),
+        );
+    }
+    group.finish();
+}
+
 fn ft_concat(c: &mut Criterion) {
     let ft: rc::FingerTree<_> = (0..1024).map(Size).collect();
     let ft_split: HashMap<_, _> = SPLIT_1024
@@ -122,6 +150,7 @@ fn ft_arc_vs_rc(c: &mut Criterion) {
     group.finish();
 }
 
+
 criterion_group! {
     benches,
     ft_arc_vs_rc,
@@ -129,6 +158,8 @@ criterion_group! {
     ft_collect,
     ft_iter,
     ft_split,
+    ft_split_left,
+    ft_split_right,
 }
 
 criterion_main!(benches);

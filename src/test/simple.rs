@@ -52,6 +52,26 @@ fn split() {
 }
 
 #[test]
+fn split_left() {
+    let ft: RcFingerTree<_> = (0..TEST_SIZE).map(Size).collect();
+    for split in 0..TEST_SIZE {
+        let left = ft.split_left(|m| **m > split);
+        validate(&left);
+        assert_eq!(*left.measure(), split);
+    }
+}
+
+#[test]
+fn split_right() {
+    let ft: RcFingerTree<_> = (0..TEST_SIZE).map(Size).collect();
+    for split in 0..TEST_SIZE {
+        let right = ft.split_right(|m| **m > split);
+        validate(&right);
+        assert_eq!(*right.measure(), TEST_SIZE - split);
+    }
+}
+
+#[test]
 fn reversed() {
     let ft: RcFingerTree<_> = (0..TEST_SIZE).map(Size).collect();
     assert_eq!(
