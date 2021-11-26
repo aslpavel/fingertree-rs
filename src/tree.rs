@@ -293,11 +293,11 @@ where
                 // spine
                 let spine_measure = left_measure.join(&deep.spine.measure());
                 if pred(&spine_measure) {
-                    let (l_measure, sx, sr) = deep.spine.split_right(left_measure.clone(), pred);
+                    let (slm, sx, sr) = deep.spine.split_right(left_measure.clone(), pred);
                     let sx = Digit::from(&sx);
-                    let (l, x, r) = sx.split(l_measure.to_owned(), pred);
+                    let (l, x, r) = sx.split(slm.to_owned(), pred);
                     return (
-                        l_measure.join(&l.measure()),
+                        slm.join(&l.measure()),
                         x.clone(),
                         Self::deep_left(r, &sr, &deep.right),
                     );

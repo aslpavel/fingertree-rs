@@ -150,7 +150,6 @@ fn ft_arc_vs_rc(c: &mut Criterion) {
     group.finish();
 }
 
-
 criterion_group! {
     benches,
     ft_arc_vs_rc,
