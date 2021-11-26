@@ -389,3 +389,93 @@ where
             .fold(Tree::empty(), |ft, v| ft.push_right(v.clone()))
     }
 }
+
+pub(crate) fn build<R, V>(nodes: &mut [Node<R, V>]) -> Tree<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    match nodes {
+        [] => Tree::empty(),
+        [n] => Tree::single(n.clone()),
+        [n0, n1] => Tree::deep(
+            Digit::One([n0.clone()]),
+            Tree::empty(),
+            Digit::One([n1.clone()]),
+        ),
+        [n0, n1, n2] => Tree::deep(
+            Digit::Two([n0.clone(), n1.clone()]),
+            Tree::empty(),
+            Digit::One([n2.clone()]),
+        ),
+        [n0, n1, n2, n3] => Tree::deep(
+            Digit::Two([n0.clone(), n1.clone()]),
+            Tree::empty(),
+            Digit::Two([n2.clone(), n3.clone()]),
+        ),
+        [n0, n1, n2, n3, n4] => Tree::deep(
+            Digit::Three([n0.clone(), n1.clone(), n2.clone()]),
+            Tree::empty(),
+            Digit::Two([n3.clone(), n4.clone()]),
+        ),
+        [n0, n1, n2, n3, n4, n5] => Tree::deep(
+            Digit::Three([n0.clone(), n1.clone(), n2.clone()]),
+            Tree::empty(),
+            Digit::Three([n3.clone(), n4.clone(), n5.clone()]),
+        ),
+        [n0, n1, n2, n3, n4, n5, n6] => Tree::deep(
+            Digit::Four([n0.clone(), n1.clone(), n2.clone(), n3.clone()]),
+            Tree::empty(),
+            Digit::Three([n4.clone(), n5.clone(), n6.clone()]),
+        ),
+        [n0, n1, n2, n3, n4, n5, n6, n7] => Tree::deep(
+            Digit::Four([n0.clone(), n1.clone(), n2.clone(), n3.clone()]),
+            Tree::empty(),
+            Digit::Four([n4.clone(), n5.clone(), n6.clone(), n7.clone()]),
+        ),
+        [n0, n1, n2, n3, n4, n5, n6, n7, n8] => Tree::deep(
+            Digit::Four([n0.clone(), n1.clone(), n2.clone(), n3.clone()]),
+            Tree::single(Node::node2(n4.clone(), n5.clone())),
+            Digit::Three([n6.clone(), n7.clone(), n8.clone()]),
+        ),
+        _ => {
+            let mut start = 4;
+            let end = nodes.len() - 4;
+            let left = Digit::from(&nodes[..start]);
+            let right = Digit::from(&nodes[end..]);
+            // lift nodes in-place
+            let mut offset = 0;
+            loop {
+                match end - start {
+                    0 => break,
+                    1 => unreachable!(),
+                    2 => {
+                        let node = Node::node2(nodes[start].clone(), nodes[start + 1].clone());
+                        nodes[offset] = node;
+                        start += 2;
+                        offset += 1;
+                    }
+                    4 => {
+                        let n0 = Node::node2(nodes[start].clone(), nodes[start + 1].clone());
+                        let n1 = Node::node2(nodes[start + 2].clone(), nodes[start + 3].clone());
+                        nodes[offset] = n0;
+                        nodes[offset + 1] = n1;
+                        start += 4;
+                        offset += 2;
+                    }
+                    _ => {
+                        let node = Node::node3(
+                            nodes[start].clone(),
+                            nodes[start + 1].clone(),
+                            nodes[start + 2].clone(),
+                        );
+                        nodes[offset] = node;
+                        start += 3;
+                        offset += 1;
+                    }
+                }
+            }
+            Tree::deep(left, build(&mut nodes[..offset]), right)
+        }
+    }
+}

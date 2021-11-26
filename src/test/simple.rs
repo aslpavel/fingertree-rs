@@ -125,3 +125,16 @@ fn sync_send() {
     is_sync::<ArcFingerTree<Size<i32>>>();
     is_send::<ArcFingerTree<Size<i32>>>();
 }
+
+#[test]
+fn from_slice() {
+    for size in 0..TEST_SIZE {
+        let vals: Vec<_> = (0..size).map(Size).collect();
+        let one: RcFingerTree<_> = vals.iter().cloned().collect();
+        let two = RcFingerTree::from(vals.as_slice());
+        validate(&one);
+        validate(&two);
+        assert_eq!(one.measure(), two.measure());
+        assert_eq!(one, two);
+    }
+}

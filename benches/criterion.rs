@@ -6,12 +6,16 @@ use std::collections::HashMap;
 const KB: usize = 1024;
 const SPLIT_1024: &[usize] = &[211, 384, 557, 730, 903];
 
-fn ft_collect(c: &mut Criterion) {
-    let mut group = c.benchmark_group("collect");
+fn ft_from(c: &mut Criterion) {
+    let mut group = c.benchmark_group("from");
     for size in [KB, 2 * KB, 4 * KB, 16 * KB] {
+        let vals: Vec<_> = (0..size).map(Size).collect();
         group.throughput(Throughput::Elements(size as u64));
-        group.bench_with_input(BenchmarkId::new("size", size), &size, |b, size| {
-            b.iter(|| (0..*size).map(Size).collect::<rc::FingerTree<_>>())
+        group.bench_with_input(BenchmarkId::new("iter", size), &vals, |b, vals| {
+            b.iter(|| vals.iter().cloned().collect::<rc::FingerTree<_>>())
+        });
+        group.bench_with_input(BenchmarkId::new("slice", size), &vals, |b, vals| {
+            b.iter(|| rc::FingerTree::from(vals.as_slice()))
         });
     }
     group.finish();
@@ -154,7 +158,7 @@ criterion_group! {
     benches,
     ft_arc_vs_rc,
     ft_concat,
-    ft_collect,
+    ft_from,
     ft_iter,
     ft_split,
     ft_split_left,

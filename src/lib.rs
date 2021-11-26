@@ -173,7 +173,7 @@ where
         let (head, tail) = self.rec.view_left()?;
         match head.as_ref() {
             NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
-            _ => unreachable!("not leaf returned from to level finger-tree"),
+            _ => unreachable!("not leaf returned from top level of the finger-tree"),
         }
     }
 
@@ -186,7 +186,7 @@ where
         let (head, tail) = self.rec.view_right()?;
         match head.as_ref() {
             NodeInner::Leaf(value) => Some((value.clone(), FingerTree { rec: tail })),
-            _ => unreachable!("not leaf returned from to level finger-tree"),
+            _ => unreachable!("not leaf returned from top level of the finger-tree"),
         }
     }
 
@@ -366,6 +366,19 @@ where
     fn from_iter<I: IntoIterator<Item = V>>(iter: I) -> Self {
         iter.into_iter()
             .fold(FingerTree::new(), |ft, item| ft.push_right(item))
+    }
+}
+
+impl<'a, R, V> From<&'a [V]> for FingerTree<R, V>
+where
+    R: Refs<V>,
+    V: Measured,
+{
+    fn from(vals: &'a [V]) -> Self {
+        let mut nodes: Vec<_> = vals.iter().map(|val| Node::leaf(val.clone())).collect();
+        Self {
+            rec: tree::build(nodes.as_mut()),
+        }
     }
 }
 

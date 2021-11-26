@@ -106,6 +106,8 @@ where
     }
 
     /// Lift iterator of nodes into iterator of nodes, which are one level deeper
+    ///
+    /// NOTE: will panic on the iterator with less than two elements
     pub(crate) fn lift<I>(iter: I) -> LiftNodesIter<I::IntoIter, R, V>
     where
         I: IntoIterator<Item = Node<R, V>>,
@@ -218,6 +220,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         match self.left {
             0 => None,
+            1 => panic!("Node::lift is called on a single element interator"),
             2 | 4 => Some(Node::node2(self.buff_next(), self.buff_next())),
             _ => Some(Node::node3(
                 self.buff_next(),

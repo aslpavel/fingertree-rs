@@ -46,4 +46,10 @@ quickcheck! {
             // concat is inverse to split
             && left.concat(&right) == ft
     }
+
+    fn from_slice(items: Vec<Size<usize>>) -> bool {
+        let ft = FingerTree::from(items.as_slice());
+        validate(&ft);
+        items.as_slice().measure() == ft.measure()
+    }
 }
