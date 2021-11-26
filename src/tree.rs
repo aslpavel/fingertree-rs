@@ -250,7 +250,7 @@ where
                 // left
                 let left_measure = measure.join(&deep.left.measure());
                 if pred(&left_measure) {
-                    let (l, x) = deep.left.split_left(measure, pred);
+                    let (l, x, _r) = deep.left.split(measure, pred);
                     return (Tree::from(l), x.clone());
                 }
                 // spine
@@ -258,11 +258,11 @@ where
                 if pred(&spine_measure) {
                     let (sl, sx) = deep.spine.split_left(left_measure.clone(), pred);
                     let sx = Digit::from(&sx);
-                    let (l, x) = sx.split_left(left_measure.join(&sl.measure()), pred);
+                    let (l, x, _r) = sx.split(left_measure.join(&sl.measure()), pred);
                     return (Self::deep_right(&deep.left, &sl, l), x.clone());
                 }
                 // right
-                let (l, x) = deep.right.split_left(spine_measure, pred);
+                let (l, x, _r) = deep.right.split(spine_measure, pred);
                 (Self::deep_right(&deep.left, &deep.spine, l), x.clone())
             }
         }
@@ -283,9 +283,9 @@ where
                 // left
                 let left_measure = measure.join(&deep.left.measure());
                 if pred(&left_measure) {
-                    let (next_measure, x, r) = deep.left.split_right(measure, pred);
+                    let (l, x, r) = deep.left.split(measure.to_owned(), pred);
                     return (
-                        next_measure,
+                        measure.join(&l.measure()),
                         x.clone(),
                         Self::deep_left(r, &deep.spine, &deep.right),
                     );
@@ -295,16 +295,16 @@ where
                 if pred(&spine_measure) {
                     let (l_measure, sx, sr) = deep.spine.split_right(left_measure.clone(), pred);
                     let sx = Digit::from(&sx);
-                    let (next_measure, x, r) = sx.split_right(l_measure.to_owned(), pred);
+                    let (l, x, r) = sx.split(l_measure.to_owned(), pred);
                     return (
-                        next_measure,
+                        l_measure.join(&l.measure()),
                         x.clone(),
                         Self::deep_left(r, &sr, &deep.right),
                     );
                 }
                 // right
-                let (next_measure, x, r) = deep.right.split_right(spine_measure.to_owned(), pred);
-                (next_measure, x.clone(), Tree::from(r))
+                let (l, x, r) = deep.right.split(spine_measure.to_owned(), pred);
+                (spine_measure.join(&l.measure()), x.clone(), Tree::from(r))
             }
         }
     }

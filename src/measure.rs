@@ -60,3 +60,12 @@ impl<T> Deref for Size<T> {
         &self.0
     }
 }
+
+impl<'a, T: Measured> Measured for &[T] {
+    type Measure = T::Measure;
+
+    fn measure(&self) -> Self::Measure {
+        self.iter()
+            .fold(T::Measure::unit(), |acc, val| acc.join(&val.measure()))
+    }
+}
