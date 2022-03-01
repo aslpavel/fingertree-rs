@@ -7,7 +7,7 @@
 //! and splitting in time logarithmic in the size of the smaller piece. It also
 //! has [`split`](struct.FingerTree.html#method.split) operation defined in general
 //! form, which can be used to implement sequence, priority queue, search tree,
-//! priority search queue and more datastructures.
+//! priority search queue and more data structures.
 //!
 //! ## Links:
 //!  - Original paper: [Finger Trees: A Simple General-purpose Data Structure](http://www.staff.city.ac.uk/~ross/papers/FingerTree.html)
@@ -16,7 +16,7 @@
 //! ## Notes:
 //!  - This implementation does not use non-regular recursive types as implementation
 //!    described in the paper. As rust's monomorphization does not play well with such types.
-//!  - Implmentation abstracts over reference counted types `Rc/Arc`. Using type family trick.
+//!  - Implementation abstracts over reference counted types `Rc/Arc`. Using type family trick.
 //!  - Uses strict spine in implementation.
 //!  - Iterator returns cloned value, and in general this implementation assumes that value
 //!    stored in a tree is cheaply clonable, if it is not you can always put it in a `Rc/Arc` or
@@ -43,7 +43,7 @@
 //! assert_eq!(right.measure(), Sum(3));
 //! assert_eq!(Vec::from_iter(&right), vec![Size("three"), Size("four"), Size("five")]);
 //!
-//! // concatinate
+//! // concatenate
 //! assert_eq!(ft, left + right);
 //!
 //! // push values
@@ -99,11 +99,11 @@ use crate::iter::Iter;
 use crate::node::Node;
 use crate::tree::Tree;
 
-/// FingerTree implemenetation
+/// FingerTree implementation
 ///
-/// FingerTree is parametrized by two type parpameters
+/// FingerTree is parametrized by two type parameters
 ///   - `R` - type family trick which determines type of references used in
-///           implementation. This crate implementes [`ArcRefs`](enum.ArcRefs.html) which is based
+///           implementation. This crate implements [`ArcRefs`](enum.ArcRefs.html) which is based
 ///           on `Arc` atomic reference counter, and [`RcRefs`](enum.RcRefs.html) which is based
 ///           on `Rc`.
 ///   - `V` - value type which must be measurable and cheaply clonable.
@@ -164,7 +164,7 @@ where
         }
     }
 
-    /// Destrutures tree into a tuple with first element of it containing first
+    /// Destructure tree into a tuple with first element of it containing first
     /// element from the left side of the tree, and second element contains tree
     /// with reset of the elements
     ///
@@ -177,7 +177,7 @@ where
         }
     }
 
-    /// Destrutures tree into a tuple with first element of it containing first
+    /// Destructure tree into a tuple with first element of it containing first
     /// element from the right side of the tree, and second element contains tree
     /// with reset of the elements
     ///
@@ -190,11 +190,11 @@ where
         }
     }
 
-    /// Destructures tree into two three, using provided predicate.
+    /// Destructure tree into two three, using provided predicate.
     ///
-    /// Predicate must be monotinic function accepting accumulated measure of elements
+    /// Predicate must be monotonic function accepting accumulated measure of elements
     /// and changing its value from `false` to `true`. This function basically behave
-    /// as if we would iterate all elements from left to right, and accumlating measure
+    /// as if we would iterate all elements from left to right, and accumulating measure
     /// of all iterated elements, calling predicate on this accumulated value and once
     /// its value flips from `false` to `true` we stop iteration and form two trees
     /// from already iterated elements and the rest of the elements.
@@ -206,7 +206,7 @@ where
     {
         if self.is_empty() {
             (Self::new(), Self::new())
-        } else if (&mut pred)(&self.measure()) {
+        } else if pred(&self.measure()) {
             let (l, x, r) = self.rec.split(V::Measure::unit(), &mut pred);
             (
                 FingerTree { rec: l },
@@ -226,7 +226,7 @@ where
     {
         if self.is_empty() {
             Self::new()
-        } else if (&mut pred)(&self.measure()) {
+        } else if pred(&self.measure()) {
             let (l, _x) = self.rec.split_left(V::Measure::unit(), &mut pred);
             FingerTree { rec: l }
         } else {
@@ -241,7 +241,7 @@ where
     {
         if self.is_empty() {
             Self::new()
-        } else if (&mut pred)(&self.measure()) {
+        } else if pred(&self.measure()) {
             let (_m, x, r) = self.rec.split_right(V::Measure::unit(), &mut pred);
 
             FingerTree {
@@ -257,14 +257,14 @@ where
     where
         F: FnMut(&V::Measure) -> bool,
     {
-        if self.is_empty() || !(&mut pred)(&self.measure()) {
+        if self.is_empty() || !pred(&self.measure()) {
             None
         } else {
             Some(self.rec.find(V::Measure::unit(), &mut pred))
         }
     }
 
-    /// Construct new finger tree wich is concatination of `self` and `other`
+    /// Construct new finger tree which is concatenation of `self` and `other`
     ///
     /// Complexity: `O(ln(N))`
     pub fn concat(&self, other: &Self) -> Self {

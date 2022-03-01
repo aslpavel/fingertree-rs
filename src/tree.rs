@@ -5,7 +5,7 @@ use crate::monoid::Monoid;
 use crate::node::Node;
 use crate::reference::{Ref, Refs};
 
-/// Only visible to defne custom [`Refs`](trait.Refs.html)
+/// Only visible to define custom [`Refs`](trait.Refs.html)
 pub struct TreeInner<R, V>
 where
     R: Refs<V>,
@@ -139,7 +139,7 @@ where
     }
 
     // left element is not `Digit` because `Digit` cannot be empty, but left in current
-    // postion can be.
+    // position can be.
     fn deep_left(left: &[Node<R, V>], spine: &Tree<R, V>, right: &Digit<Node<R, V>>) -> Self {
         if left.is_empty() {
             match spine.view_left() {

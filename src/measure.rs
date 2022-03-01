@@ -6,14 +6,14 @@ use crate::monoid::{Monoid, Sum};
 
 /// Measured definition
 ///
-/// Type implementing `Measured` are basically stating that they have assocated
+/// Type implementing `Measured` are basically stating that they have associated
 /// monoidal measure with them. And both type itself and measure must be
 /// **cheaply clonable**, otherwise you can just wrap them in `Arc|Rc`
 pub trait Measured: Clone {
     /// Measure type
     type Measure: Monoid + Clone;
 
-    /// Assocated measure with given value
+    /// Associated measure with given value
     fn measure(&self) -> Self::Measure;
 }
 

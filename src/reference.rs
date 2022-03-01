@@ -6,7 +6,7 @@ use crate::measure::Measured;
 use crate::node::NodeInner;
 use crate::tree::TreeInner;
 
-/// Interface that all reference types should impelmenet
+/// Interface that all reference types should implement
 pub trait Ref: Clone + Deref
 where
     Self::Target: Sized,
@@ -29,7 +29,7 @@ impl<T> Ref for Arc<T> {
 
 /// Interface which defines all reference types needed by finger tree implementation.
 ///
-/// By implementing this interface for your reference type you can use finger treee
+/// By implementing this interface for your reference type you can use finger tree
 /// with your reference type.
 ///
 /// # Example:

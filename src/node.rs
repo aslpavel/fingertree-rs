@@ -4,7 +4,7 @@ use crate::measure::Measured;
 use crate::monoid::Monoid;
 use crate::reference::{Ref, Refs};
 
-/// Only visible to defne custom [`Refs`](trait.Refs.html)
+/// Only visible to define custom [`Refs`](trait.Refs.html)
 pub enum NodeInner<R, V>
 where
     R: Refs<V>,

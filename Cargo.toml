@@ -1,6 +1,6 @@
 [package]
 name = "fingertrees"
-version = "0.2.9"
+version = "0.2.10"
 authors = ["Pavel Aslanov <asl.pavel@gmail.com>"]
 description = "Immutable persisten finger trees"
 license = "MIT"

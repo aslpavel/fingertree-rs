@@ -10,7 +10,7 @@ supporting access to the ends in amortized constant time, and concatenation
 and splitting in time logarithmic in the size of the smaller piece. It also
 has `split` operation defined in general
 form, which can be used to implement sequence, priority queue, search tree,
-priority search queue and more datastructures.
+priority search queue and more data structures.
 
 ## Links:
  - Original paper: [Finger Trees: A Simple General-purpose Data Structure](http://www.staff.city.ac.uk/~ross/papers/FingerTree.html)
@@ -19,7 +19,7 @@ priority search queue and more datastructures.
 ## Notes:
  - This implementation does not use non-regular recursive types as implementation
    described in the paper. As rust's monomorphization does not play well with such types.
- - Implmentation abstracts over reference counted types `Rc/Arc`. Using type family trick.
+ - Implementation abstracts over reference counted types `Rc/Arc`. Using type family trick.
  - Uses strict spine in implementation.
  - Iterator returns cloned value, and in general this implementation assumes that value
    stored in a tree is cheaply clonable, if it is not you can always put it in a `Rc/Arc` or
@@ -46,7 +46,7 @@ assert_eq!(Vec::from_iter(&left), vec![Size("one"), Size("two")]);
 assert_eq!(right.measure(), Sum(3));
 assert_eq!(Vec::from_iter(&right), vec![Size("three"), Size("four"), Size("five")]);
 
-// concatinate
+// concatenate
 assert_eq!(ft, left + right);
 
 // push values

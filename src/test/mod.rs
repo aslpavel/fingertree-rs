@@ -12,7 +12,7 @@ use crate::tree::Tree;
 
 // constraint that is dynamic in current implementation but static in
 // original algorithm due to the fact that rust does not support
-// non-regualr recursive types. Each level of spine should add one level
+// non-regular recursive types. Each level of spine should add one level
 // of depth to all nodes in current level.
 pub fn validate<R, V>(ft: &FingerTree<R, V>)
 where
