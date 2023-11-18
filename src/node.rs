@@ -150,7 +150,7 @@ where
     V: Measured,
 {
     fn as_ref(&self) -> &NodeInner<R, V> {
-        &*self.inner
+        &self.inner
     }
 }
 

@@ -8,7 +8,7 @@ where
     V: Arbitrary + Measured + Sync,
     V::Measure: Send + Sync,
 {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+    fn arbitrary(g: &mut Gen) -> Self {
         let vec: Vec<V> = Arbitrary::arbitrary(g);
         vec.into_iter().collect()
     }
@@ -23,7 +23,7 @@ impl<V> Arbitrary for Size<V>
 where
     V: Arbitrary,
 {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+    fn arbitrary(g: &mut Gen) -> Self {
         Size(Arbitrary::arbitrary(g))
     }
 

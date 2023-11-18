@@ -61,7 +61,7 @@ impl<T> Deref for Size<T> {
     }
 }
 
-impl<'a, T: Measured> Measured for &[T] {
+impl<T: Measured> Measured for &[T] {
     type Measure = T::Measure;
 
     fn measure(&self) -> Self::Measure {
